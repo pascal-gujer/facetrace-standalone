@@ -11,6 +11,9 @@
   const FACE_CROP_SIDE = 144;
   const ARCFACE_INPUT_SIDE = 112;
   const ARCFACE_EMBEDDING_DIM = 256;
+  const LOCALE_STORAGE_KEY = "facetrace.locale";
+  const DEFAULT_LOCALE = "en";
+  const SUPPORTED_LOCALES = ["en", "de", "fr"];
 
   // Calibration of cosine similarity to a user-facing percentage. The model
   // (SE-MobileFaceNet trained with ArcFace loss on MS1M) typically separates
@@ -53,6 +56,12 @@
     modelsReady: false,
     modelError: null,
     backend: "",
+    modelStatusKey: "model.loading.initial",
+    modelStatusVars: {},
+    locales: {},
+    locale: DEFAULT_LOCALE,
+    progressKey: "progress.idle",
+    progressVars: {},
     runToken: 0,
     processing: false,
     reference: null,
@@ -81,6 +90,7 @@
     candidateInput: document.getElementById("candidateInput"),
     candidateDropzone: document.getElementById("candidateDropzone"),
     candidateMessage: document.getElementById("candidateMessage"),
+    languageSelect: document.getElementById("languageSelect"),
     sortSelect: document.getElementById("sortSelect"),
     summaryCounts: document.getElementById("summaryCounts"),
     resultsList: document.getElementById("resultsList")
@@ -100,6 +110,103 @@
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function resolveLocale(locale) {
+    const normalized = String(locale || "").toLowerCase().split("-")[0];
+    return SUPPORTED_LOCALES.includes(normalized) ? normalized : DEFAULT_LOCALE;
+  }
+
+  function getInitialLocale() {
+    try {
+      const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+      if (saved) return resolveLocale(saved);
+    } catch (_error) {
+      // ignore storage access errors
+    }
+    return resolveLocale(window.navigator.language || DEFAULT_LOCALE);
+  }
+
+  function getI18nText(key) {
+    const current = state.locales[state.locale] || {};
+    if (Object.prototype.hasOwnProperty.call(current, key)) {
+      return current[key];
+    }
+    const fallback = state.locales[DEFAULT_LOCALE] || {};
+    if (Object.prototype.hasOwnProperty.call(fallback, key)) {
+      return fallback[key];
+    }
+    return key;
+  }
+
+  function interpolate(text, vars) {
+    return String(text).replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, name) => {
+      if (!vars || !Object.prototype.hasOwnProperty.call(vars, name)) {
+        return `{${name}}`;
+      }
+      return String(vars[name]);
+    });
+  }
+
+  function t(key, vars) {
+    return interpolate(getI18nText(key), vars);
+  }
+
+  function issueLabel(issueKey) {
+    return t(issueKey);
+  }
+
+  function qualityListLabel(issueKeys) {
+    const labels = (issueKeys || []).map(issueLabel);
+    if (!labels.length) return "";
+    try {
+      return new Intl.ListFormat(state.locale, { style: "short", type: "conjunction" }).format(labels);
+    } catch (_error) {
+      return labels.join(", ");
+    }
+  }
+
+  function applyI18nToDom() {
+    document.documentElement.lang = state.locale;
+    document.title = t("app.title");
+
+    document.querySelectorAll("[data-i18n]").forEach((node) => {
+      node.textContent = t(node.getAttribute("data-i18n"));
+    });
+    document.querySelectorAll("[data-i18n-html]").forEach((node) => {
+      node.innerHTML = t(node.getAttribute("data-i18n-html"));
+    });
+    document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
+      node.setAttribute("aria-label", t(node.getAttribute("data-i18n-aria-label")));
+    });
+  }
+
+  function setLocale(locale, persist) {
+    state.locale = resolveLocale(locale);
+    if (persist) {
+      try {
+        window.localStorage.setItem(LOCALE_STORAGE_KEY, state.locale);
+      } catch (_error) {
+        // ignore storage access errors
+      }
+    }
+    if (elements.languageSelect) {
+      elements.languageSelect.value = state.locale;
+    }
+    applyI18nToDom();
+    refreshModelStatusText();
+    refreshProgressText();
+    renderReference();
+    renderResults();
+    updateCandidateMessage();
+  }
+
+  function refreshModelStatusText() {
+    elements.modelStatusText.textContent = t(state.modelStatusKey, state.modelStatusVars);
+  }
+
+  function refreshProgressText() {
+    elements.progressText.textContent = t(state.progressKey, state.progressVars);
   }
 
   function formatNumber(value, digits = 4) {
@@ -127,9 +234,18 @@
   function get2dContext(canvas, options) {
     const context = canvas.getContext("2d", options);
     if (!context) {
-      throw new Error("Canvas 2D context is unavailable");
+      const error = new Error("error.canvas_unavailable");
+      error.i18nKey = "error.canvas_unavailable";
+      throw error;
     }
     return context;
+  }
+
+  function makeI18nError(key, vars) {
+    const error = new Error(key);
+    error.i18nKey = key;
+    error.i18nVars = vars || {};
+    return error;
   }
 
   function registerObjectUrl(url) {
@@ -178,11 +294,11 @@
   async function decodeEmbeddedBundle() {
     const packed = window.FACETRACE_EMBEDDED_MODELS_GZIP_B64;
     if (typeof packed !== "string" || !packed) {
-      throw new Error("Local embedded model bundle is missing. This index.html copy may be incomplete.");
+      throw makeI18nError("error.bundle_missing");
     }
 
     if (typeof DecompressionStream !== "function") {
-      throw new Error("This browser lacks DecompressionStream. Use a recent Chromium, Firefox, or Safari.");
+      throw makeI18nError("error.decompression_missing");
     }
 
     const compressed = base64ToUint8Array(packed);
@@ -192,10 +308,10 @@
     try {
       map = JSON.parse(text);
     } catch (error) {
-      throw new Error("Embedded model bundle JSON is corrupt.");
+      throw makeI18nError("error.bundle_corrupt");
     }
     if (!map || typeof map !== "object") {
-      throw new Error("Embedded model bundle has an unexpected shape.");
+      throw makeI18nError("error.bundle_shape");
     }
     return map;
   }
@@ -246,9 +362,9 @@
 
       const raw = typeof input === "string" ? input : input && input.url ? input.url : "";
       if (/^https?:/i.test(raw)) {
-        return Promise.reject(new Error("Network requests are disabled in FaceTrace Offline."));
+        return Promise.reject(makeI18nError("error.network_disabled"));
       }
-      return Promise.reject(new Error(`Blocked non-embedded local request: ${name || "unknown asset"}`));
+      return Promise.reject(makeI18nError("error.blocked_local_request", { name: name || "?" }));
     }
 
     window.fetch = offlineFetch;
@@ -272,7 +388,7 @@
 
   async function selectTfjsBackend() {
     if (!tfRef || typeof tfRef.setBackend !== "function") {
-      throw new Error("Embedded TensorFlow.js did not initialize. This index.html copy may be incomplete.");
+      throw makeI18nError("error.tf_unavailable");
     }
     // Prefer WebGL for ~10-50x speedup on most machines. Locked-down browsers
     // without WebGL fall back to the pure-JS CPU backend.
@@ -295,30 +411,30 @@
   // ---------- model loading ----------
 
   async function loadModels() {
-    setModelStatus("loading", "Decoding local model bundle...");
+    setModelStatus("loading", "status.model.decoding");
     let bundle = null;
     try {
       if (!window.faceapi) {
-        throw new Error("Embedded face-api did not initialize. This index.html copy may be incomplete.");
+        throw makeI18nError("error.faceapi_unavailable");
       }
       tfRef = window.faceapi.tf || null;
       if (!tfRef || typeof tfRef.loadGraphModel !== "function") {
-        throw new Error("Embedded face-api did not expose TensorFlow.js. This index.html copy may be incomplete.");
+        throw makeI18nError("error.faceapi_tf_unavailable");
       }
 
       bundle = await decodeEmbeddedBundle();
       installOfflineModelFetch(bundle);
 
-      setModelStatus("loading", "Selecting TensorFlow.js backend...");
+      setModelStatus("loading", "status.model.select_backend");
       state.backend = await selectTfjsBackend();
 
-      setModelStatus("loading", `Loading detector + landmarks (${state.backend})...`);
+      setModelStatus("loading", "status.model.loading_detector", { backend: state.backend });
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_BASE),
         faceapi.nets.faceLandmark68Net.loadFromUri(FACE_API_BASE)
       ]);
 
-      setModelStatus("loading", `Loading ArcFace recognizer (${state.backend})...`);
+      setModelStatus("loading", "status.model.loading_arcface", { backend: state.backend });
       arcfaceModel = await tfRef.loadGraphModel(`${ARCFACE_BASE}/model.json`);
 
       // Warm-up pass: run one zero-input inference so WebGL programs and
@@ -332,15 +448,15 @@
 
       state.modelsReady = true;
       state.modelError = null;
-      setModelStatus("ready", `Local face models ready (${state.backend}). Offline mode is active.`);
+      setModelStatus("ready", "status.model.ready", { backend: state.backend });
       updateCandidateMessage();
       processCandidateQueue();
     } catch (error) {
       state.modelsReady = false;
       state.modelError = error;
-      setModelStatus("error", `Model not loaded: ${error.message}`);
+      setModelStatus("error", "status.model.error", { message: normalizeError(error) });
       elements.referenceMessage.className = "message error";
-      elements.referenceMessage.textContent = "Model not loaded. Confirm you are opening the generated self-contained index.html.";
+      elements.referenceMessage.textContent = t("status.model.unavailable_hint");
       updateCandidateMessage();
     } finally {
       // Free the embedded source bytes regardless of success/failure. On
@@ -349,9 +465,11 @@
     }
   }
 
-  function setModelStatus(kind, text) {
+  function setModelStatus(kind, key, vars) {
+    state.modelStatusKey = key;
+    state.modelStatusVars = vars || {};
     elements.modelDot.className = `status-dot ${kind === "ready" ? "ready" : kind === "error" ? "error" : ""}`;
-    elements.modelStatusText.textContent = text;
+    refreshModelStatusText();
   }
 
   // ---------- 5-point alignment ----------
@@ -596,16 +714,16 @@
   function classifyQuality(quality) {
     const issues = [];
     if (Number.isFinite(quality.detectorScore) && quality.detectorScore < MIN_DETECTOR_SCORE_FOR_GOOD) {
-      issues.push("low detector confidence");
+      issues.push("quality.low_detector");
     }
     if (Number.isFinite(quality.yawRatio) && quality.yawRatio > MAX_YAW_RATIO_FOR_GOOD) {
-      issues.push("off-axis yaw");
+      issues.push("quality.off_axis_yaw");
     }
     if (Number.isFinite(quality.pitchRatio) && quality.pitchRatio > MAX_PITCH_RATIO_FOR_GOOD) {
-      issues.push("off-axis pitch");
+      issues.push("quality.off_axis_pitch");
     }
     if (Number.isFinite(quality.blurVariance) && quality.blurVariance < MIN_BLUR_VARIANCE_FOR_GOOD) {
-      issues.push("low sharpness");
+      issues.push("quality.low_sharpness");
     }
     return issues;
   }
@@ -674,7 +792,7 @@
     const imageFiles = files.filter(isLikelyImage);
     if (!imageFiles.length) {
       elements.referenceMessage.className = "message error";
-      elements.referenceMessage.textContent = "Image could not be read. Select a browser-readable image file.";
+      elements.referenceMessage.textContent = t("error.image_unreadable_help");
       return;
     }
 
@@ -686,11 +804,11 @@
       status: "processing",
       faces: [],
       thumbnail: "",
-      error: null
+      errorKey: null
     };
     state.referenceFaceIndex = 0;
     renderReference();
-    showProgress(0, 1, "Processing reference image...");
+    showProgress(0, 1, "progress.reference.processing");
 
     try {
       ensureModelsReady();
@@ -714,7 +832,8 @@
         status: "error",
         faces: [],
         thumbnail: "",
-        error: normalizeError(error)
+        errorKey: normalizeErrorKey(error),
+        errorVars: normalizeErrorVars(error)
       };
     } finally {
       if (token === state.runToken) {
@@ -732,7 +851,7 @@
 
     if (!imageFiles.length) {
       elements.candidateMessage.className = "message error";
-      elements.candidateMessage.textContent = "No browser-readable image files were selected.";
+      elements.candidateMessage.textContent = t("message.files.none_image");
       return;
     }
 
@@ -749,8 +868,8 @@
 
     elements.candidateMessage.className = rejectedCount ? "message warn" : "message";
     elements.candidateMessage.textContent = rejectedCount
-      ? `${imageFiles.length} image(s) queued. ${rejectedCount} non-image file(s) ignored.`
-      : `${imageFiles.length} image(s) queued for local processing.`;
+      ? t("message.files.queued_mixed", { accepted: imageFiles.length, rejected: rejectedCount })
+      : t("message.files.queued_only", { count: imageFiles.length });
 
     renderResults();
     processCandidateQueue();
@@ -758,7 +877,10 @@
 
   function ensureModelsReady() {
     if (!state.modelsReady) {
-      throw new Error(state.modelError ? `Model not loaded: ${state.modelError.message}` : "Model not loaded yet.");
+      if (state.modelError) {
+        throw makeI18nError("status.model.error", { message: normalizeError(state.modelError) });
+      }
+      throw makeI18nError("error.model_not_loaded");
     }
   }
 
@@ -791,7 +913,7 @@
     let completed = 0;
     let cancelled = false;
 
-    showProgress(0, Math.max(queue.length, 1), queue.length ? "Processing candidate images..." : "No queued images.");
+    showProgress(0, Math.max(queue.length, 1), queue.length ? "progress.candidates.processing" : "progress.none_queued");
 
     for (const candidate of queue) {
       if (token !== state.runToken) {
@@ -800,7 +922,7 @@
       }
       candidate.status = "processing";
       scheduleRenderResults();
-      showProgress(completed, queue.length, `Processing ${candidate.fileName}...`);
+      showProgress(completed, queue.length, "progress.candidate.processing", { fileName: candidate.fileName });
 
       try {
         await yieldToBrowser();
@@ -821,6 +943,8 @@
           cancelled = true;
           break;
         }
+        const errorKey = normalizeErrorKey(error);
+        const errorVars = normalizeErrorVars(error);
         candidate.result = {
           fileName: candidate.fileName,
           thumbnail: "",
@@ -830,17 +954,20 @@
           comparisons: [],
           best: null,
           statusKind: "error",
-          statusText: normalizeError(error),
+          statusKey: errorKey,
+          statusVars: errorVars,
           faceCount: 0,
-          error: normalizeError(error)
+          errorKey,
+          errorVars
         };
         candidate.status = "done";
-        candidate.error = normalizeError(error);
+        candidate.errorKey = errorKey;
+        candidate.errorVars = errorVars;
         candidate.file = null;
       }
 
       completed += 1;
-      showProgress(completed, queue.length, `${completed} of ${queue.length} candidate image(s) processed.`);
+      showProgress(completed, queue.length, "progress.candidates.done", { completed, total: queue.length });
       scheduleRenderResults();
       await yieldToBrowser();
     }
@@ -951,7 +1078,7 @@
         faces,
         faceCount: faces.length,
         status: faces.length ? "ok" : "no-face",
-        error: faces.length ? null : "No face detected"
+        errorKey: faces.length ? null : "error.no_face_detected"
       };
       returned = true;
       return analysis;
@@ -1000,7 +1127,7 @@
       });
       image.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("Image could not be read"));
+        reject(makeI18nError("error.image_unreadable"));
       };
       image.src = url;
     });
@@ -1010,7 +1137,7 @@
     const sourceWidth = image.naturalWidth || image.width;
     const sourceHeight = image.naturalHeight || image.height;
     if (!sourceWidth || !sourceHeight) {
-      throw new Error("Image could not be read");
+      throw makeI18nError("error.image_unreadable");
     }
 
     const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
@@ -1075,7 +1202,7 @@
       return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {
           if (blob) resolve(blob);
-          else reject(new Error("Image preview could not be generated"));
+          else reject(makeI18nError("error.preview_generation"));
         }, type, quality);
       });
     }
@@ -1150,11 +1277,11 @@
   }
 
   function interpretSimilarity(percent) {
-    if (percent >= 85) return "very similar";
-    if (percent >= 70) return "similar";
-    if (percent >= 50) return "possibly similar";
-    if (percent >= 30) return "low similarity";
-    return "very low similarity";
+    if (percent >= 85) return "similarity.very_high";
+    if (percent >= 70) return "similarity.high";
+    if (percent >= 50) return "similarity.medium";
+    if (percent >= 30) return "similarity.low";
+    return "similarity.very_low";
   }
 
   function scoreClass(percent) {
@@ -1172,20 +1299,22 @@
       comparisons: [],
       best: null,
       statusKind: "error",
-      statusText: "",
-      error: analysis.error || null
+      statusKey: "",
+      statusVars: {},
+      errorKey: analysis.errorKey || null,
+      errorVars: analysis.errorVars || {}
     };
 
     if (!referenceFace) {
       base.statusKind = "error";
-      base.statusText = "Model not loaded or reference face missing";
+      base.statusKey = "error.model_or_reference_missing";
       return base;
     }
 
     if (!analysis.faces || analysis.faces.length === 0) {
       base.statusKind = "error";
-      base.statusText = "No face detected";
-      base.error = "No face detected";
+      base.statusKey = "error.no_face_detected";
+      base.errorKey = "error.no_face_detected";
       return base;
     }
 
@@ -1199,7 +1328,7 @@
         cosine,
         distance,
         similarity,
-        interpretation: interpretSimilarity(similarity),
+        interpretationKey: interpretSimilarity(similarity),
         detectorScore: face.score,
         crop: face.crop,
         qualityIssues: classifyQuality(face.quality),
@@ -1215,36 +1344,53 @@
 
     if (analysis.faces.length > 1) {
       base.statusKind = "warn";
-      base.statusText = `Multiple faces detected (${analysis.faces.length}); closest face compared`;
+      base.statusKey = "candidate.state.multiple_faces";
+      base.statusVars = { count: analysis.faces.length };
     } else {
       base.statusKind = "ok";
-      base.statusText = "Face detected";
+      base.statusKey = "candidate.state.face_detected";
     }
 
     return base;
   }
 
-  function normalizeError(error) {
-    if (!error) return "Image could not be read";
+  function normalizeErrorKey(error) {
+    if (!error) return "error.image_unreadable";
+    if (error.i18nKey) return error.i18nKey;
     const message = error.message || String(error);
-    if (/model not loaded/i.test(message)) return message;
-    if (/could not be read|decode|image/i.test(message)) return "Image could not be read";
-    return message;
+    if (state.locales.en && state.locales.en[message]) return message;
+    if (/could not be read|decode|image/i.test(message)) return "error.image_unreadable";
+    return "error.unexpected";
+  }
+
+  function normalizeErrorVars(error) {
+    if (!error) return {};
+    if (error.i18nVars) return error.i18nVars;
+    const message = error.message || String(error);
+    return message ? { message } : {};
+  }
+
+  function normalizeError(error) {
+    return t(normalizeErrorKey(error), normalizeErrorVars(error));
   }
 
   // ---------- progress UI ----------
 
-  function showProgress(value, max, text) {
+  function showProgress(value, max, key, vars) {
+    state.progressKey = key || "progress.idle";
+    state.progressVars = vars || {};
     elements.progressWrap.classList.add("active");
     elements.progressBar.max = Math.max(1, max || 1);
     elements.progressBar.value = clamp(value || 0, 0, elements.progressBar.max);
-    elements.progressText.textContent = text || "Processing...";
+    refreshProgressText();
   }
 
   function hideProgress() {
+    state.progressKey = "progress.idle";
+    state.progressVars = {};
     elements.progressWrap.classList.remove("active");
     elements.progressBar.value = 0;
-    elements.progressText.textContent = "Idle";
+    refreshProgressText();
   }
 
   // ---------- rendering ----------
@@ -1268,41 +1414,41 @@
     elements.referenceFaces.innerHTML = "";
 
     if (!reference) {
-      elements.referencePreview.innerHTML = `<div class="empty-state">No reference image selected.</div>`;
+      elements.referencePreview.innerHTML = `<div class="empty-state">${escapeHtml(t("reference.empty"))}</div>`;
       elements.referenceMessage.className = "message";
-      elements.referenceMessage.textContent = "Select a clear image with one visible face. If several faces are detected, choose the reference face below.";
+      elements.referenceMessage.textContent = t("reference.help");
       return;
     }
 
     if (reference.thumbnail) {
-      elements.referencePreview.innerHTML = `<img src="${reference.thumbnail}" alt="Reference image preview">`;
+      elements.referencePreview.innerHTML = `<img src="${reference.thumbnail}" alt="${escapeHtml(t("alt.reference_image_preview"))}">`;
     } else {
-      elements.referencePreview.innerHTML = `<div class="empty-state">Processing ${escapeHtml(reference.fileName)}...</div>`;
+      elements.referencePreview.innerHTML = `<div class="empty-state">${escapeHtml(t("progress.candidate.processing", { fileName: reference.fileName }))}</div>`;
     }
 
     if (reference.status === "processing") {
       elements.referenceMessage.className = "message";
-      elements.referenceMessage.textContent = "Detecting faces and extracting the local descriptor...";
+      elements.referenceMessage.textContent = t("message.reference.processing");
       return;
     }
 
-    if (reference.error || !reference.faces.length) {
+    if (reference.errorKey || !reference.faces.length) {
       elements.referenceMessage.className = "message error";
-      elements.referenceMessage.textContent = reference.error || "No face detected";
+      elements.referenceMessage.textContent = t(reference.errorKey || "error.no_face_detected", reference.errorVars || {});
       return;
     }
 
     if (reference.faces.length > 1) {
       elements.referenceMessage.className = "message warn";
-      elements.referenceMessage.textContent = `Multiple faces detected (${reference.faces.length}). The selected face below is used as the reference.`;
+      elements.referenceMessage.textContent = t("message.reference.multiple", { count: reference.faces.length });
     } else {
       elements.referenceMessage.className = "message";
-      elements.referenceMessage.textContent = "Reference face ready. Candidate images will be sorted by similarity percentage.";
+      elements.referenceMessage.textContent = t("message.reference.ready");
     }
 
     const label = document.createElement("div");
     label.className = "summary-counts";
-    label.textContent = "Detected reference faces";
+    label.textContent = t("message.reference.faces_label");
     const strip = document.createElement("div");
     strip.className = "face-strip";
 
@@ -1311,11 +1457,11 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = `face-choice ${index === state.referenceFaceIndex ? "active" : ""}`;
-      const issueLabel = issues.length ? `<span class="face-quality-warn">${escapeHtml(issues[0])}</span>` : "";
+      const issueBadge = issues.length ? `<span class="face-quality-warn">${escapeHtml(issueLabel(issues[0]))}</span>` : "";
       button.innerHTML = `
-        <img src="${face.crop}" alt="Reference face ${index + 1}">
-        <span>Face ${index + 1}</span>
-        ${issueLabel}
+        <img src="${face.crop}" alt="${escapeHtml(t("label.reference_face_with_index", { index: index + 1 }))}">
+        <span>${escapeHtml(t("label.face_with_index", { index: index + 1 }))}</span>
+        ${issueBadge}
       `;
       button.addEventListener("click", () => {
         state.referenceFaceIndex = index;
@@ -1333,15 +1479,20 @@
     elements.exportButton.disabled = !state.candidates.some((candidate) => candidate.result);
 
     if (!state.candidates.length) {
-      elements.summaryCounts.textContent = "No candidate images selected.";
-      elements.resultsList.innerHTML = `<div class="empty-state">Results will appear here after a reference and candidate image are processed.</div>`;
+      elements.summaryCounts.textContent = t("results.empty");
+      elements.resultsList.innerHTML = `<div class="empty-state">${escapeHtml(t("results.list.empty"))}</div>`;
       return;
     }
 
     const done = state.candidates.filter((candidate) => candidate.result).length;
     const withScores = state.candidates.filter((candidate) => candidate.result && candidate.result.best).length;
     const errors = state.candidates.filter((candidate) => candidate.result && candidate.result.statusKind === "error").length;
-    elements.summaryCounts.textContent = `${done} of ${state.candidates.length} processed, ${withScores} scored, ${errors} with errors.`;
+    elements.summaryCounts.textContent = t("summary.counts", {
+      done,
+      total: state.candidates.length,
+      scored: withScores,
+      errors
+    });
 
     const sorted = getSortedCandidates();
     elements.resultsList.innerHTML = sorted.map(renderCandidateCard).join("");
@@ -1351,7 +1502,10 @@
     const candidates = [...state.candidates];
     const similarity = (candidate) => candidate.result && candidate.result.best ? candidate.result.best.similarity : -1;
     const name = (candidate) => candidate.fileName.toLocaleLowerCase();
-    const status = (candidate) => candidate.result ? candidate.result.statusText || candidate.status : candidate.status;
+    const status = (candidate) => {
+      if (!candidate.result) return candidate.status;
+      return t(candidate.result.statusKey || "candidate.state.pending", candidate.result.statusVars || {});
+    };
 
     candidates.sort((left, right) => {
       if (state.sortMode === "similarity-asc") {
@@ -1370,18 +1524,22 @@
 
   function renderCandidateCard(candidate) {
     if (!candidate.result) {
-      const status = candidate.status === "processing" ? "Processing" : hasUsableReference() ? "Queued" : "Waiting for reference";
+      const status = candidate.status === "processing"
+        ? t("candidate.state.processing")
+        : hasUsableReference()
+          ? t("candidate.state.queued")
+          : t("candidate.state.waiting_reference");
       return `
         <article class="result-card">
           <div class="thumb"><div class="empty-state">${candidate.status === "processing" ? "..." : ""}</div></div>
-          <div class="face-thumb"><div class="empty-state">Face</div></div>
+          <div class="face-thumb"><div class="empty-state">${escapeHtml(t("label.face"))}</div></div>
           <div class="result-main">
             <div class="filename" title="${escapeHtml(candidate.fileName)}">${escapeHtml(candidate.fileName)}</div>
             <div class="status-row"><span class="badge">${status}</span></div>
           </div>
           <div class="score-block">
-            <div class="score unavailable">Pending</div>
-            <div class="interpretation">${state.modelsReady ? "Awaiting local processing" : "Model not loaded"}</div>
+            <div class="score unavailable">${escapeHtml(t("candidate.state.pending"))}</div>
+            <div class="interpretation">${escapeHtml(state.modelsReady ? t("candidate.state.awaiting_processing") : t("candidate.state.model_not_loaded"))}</div>
           </div>
         </article>
       `;
@@ -1390,37 +1548,37 @@
     const result = candidate.result;
     const best = result.best;
     const percent = best ? best.similarity : null;
-    const interpretation = best ? best.interpretation : result.statusText;
+    const interpretation = best ? t(best.interpretationKey) : t(result.statusKey || "candidate.state.pending", result.statusVars || {});
     const statusKind = result.statusKind || "error";
     const bestFace = best ? result.faces[best.faceIndex] : null;
-    const scoreText = best ? `${percent}%` : "No score";
-    const scoreLabel = best ? `${percent}% similar` : "No similarity score";
+    const scoreText = best ? `${percent}%` : t("candidate.state.no_score");
+    const scoreLabel = best ? t("detail.similarity_value", { percent, interpretation: t(best.interpretationKey) }) : t("candidate.state.no_similarity_score");
     const thumb = result.thumbnail
-      ? `<img src="${result.thumbnail}" alt="Candidate image preview">`
-      : `<div class="empty-state">No preview</div>`;
+      ? `<img src="${result.thumbnail}" alt="${escapeHtml(t("alt.candidate_image_preview"))}">`
+      : `<div class="empty-state">${escapeHtml(t("candidate.state.no_preview"))}</div>`;
     const faceThumb = bestFace && bestFace.crop
-      ? `<img src="${bestFace.crop}" alt="Best detected face preview">`
-      : `<div class="empty-state">No face</div>`;
+      ? `<img src="${bestFace.crop}" alt="${escapeHtml(t("alt.best_detected_face_preview"))}">`
+      : `<div class="empty-state">${escapeHtml(t("candidate.state.no_face"))}</div>`;
 
     const qualityIssues = best && best.qualityIssues && best.qualityIssues.length
-      ? `<span class="badge warn">quality: ${escapeHtml(best.qualityIssues.join(", "))}</span>`
+      ? `<span class="badge warn">${escapeHtml(t("label.quality", { issues: qualityListLabel(best.qualityIssues) }))}</span>`
       : "";
 
     return `
       <article class="result-card">
         <div>
           <div class="thumb">${thumb}</div>
-          <div class="thumb-label">Image</div>
+          <div class="thumb-label">${escapeHtml(t("label.image"))}</div>
         </div>
         <div>
           <div class="face-thumb">${faceThumb}</div>
-          <div class="face-label">${best ? "Best face" : "Face"}</div>
+          <div class="face-label">${escapeHtml(best ? t("label.best_face") : t("label.face"))}</div>
         </div>
         <div class="result-main">
           <div class="filename" title="${escapeHtml(candidate.fileName)}">${escapeHtml(candidate.fileName)}</div>
           <div class="status-row">
-            <span class="badge ${statusKind}">${escapeHtml(result.statusText)}</span>
-            <span class="badge">${result.faceCount || 0} face${result.faceCount === 1 ? "" : "s"}</span>
+            <span class="badge ${statusKind}">${escapeHtml(t(result.statusKey || "candidate.state.pending", result.statusVars || {}))}</span>
+            <span class="badge">${escapeHtml(t("label.face_count", { count: result.faceCount || 0 }))}</span>
             ${qualityIssues}
           </div>
         </div>
@@ -1436,29 +1594,29 @@
   function renderDetails(result) {
     const best = result.best;
     const cells = [
-      ["Filename", result.fileName],
-      ["Detection status", result.statusText || ""],
-      ["Detected faces", String(result.faceCount || 0)],
-      ["Image size used", result.width && result.height ? `${result.width} x ${result.height}` : ""]
+      [t("detail.filename"), result.fileName],
+      [t("detail.detection_status"), t(result.statusKey || "candidate.state.pending", result.statusVars || {})],
+      [t("detail.detected_faces"), String(result.faceCount || 0)],
+      [t("detail.image_size"), result.width && result.height ? `${result.width} x ${result.height}` : ""]
     ];
 
     if (best) {
       cells.push(
-        ["Similarity", `${best.similarity}% (${best.interpretation})`],
-        ["Cosine similarity", formatNumber(best.cosine, 5)],
-        ["Euclidean distance", formatNumber(best.distance, 5)],
-        ["Detector score", formatNumber(best.detectorScore, 4)]
+        [t("detail.similarity"), t("detail.similarity_value", { percent: best.similarity, interpretation: t(best.interpretationKey) })],
+        [t("detail.cosine"), formatNumber(best.cosine, 5)],
+        [t("detail.euclidean"), formatNumber(best.distance, 5)],
+        [t("detail.detector_score"), formatNumber(best.detectorScore, 4)]
       );
       if (best.quality) {
         cells.push(
-          ["Yaw ratio", formatNumber(best.quality.yawRatio, 3)],
-          ["Pitch ratio", formatNumber(best.quality.pitchRatio, 3)],
-          ["Roll (deg)", formatNumber(best.quality.rollDegrees, 2)],
-          ["Sharpness (Lap. var)", formatNumber(best.quality.blurVariance, 1)]
+          [t("detail.yaw_ratio"), formatNumber(best.quality.yawRatio, 3)],
+          [t("detail.pitch_ratio"), formatNumber(best.quality.pitchRatio, 3)],
+          [t("detail.roll"), formatNumber(best.quality.rollDegrees, 2)],
+          [t("detail.sharpness"), formatNumber(best.quality.blurVariance, 1)]
         );
       }
-    } else if (result.error) {
-      cells.push(["Error", result.error]);
+    } else if (result.errorKey) {
+      cells.push([t("detail.error"), t(result.errorKey, result.errorVars || {})]);
     }
 
     const faceList = result.comparisons && result.comparisons.length
@@ -1466,10 +1624,10 @@
         <div class="candidate-faces">
           ${result.comparisons.map((item) => `
             <div class="candidate-face ${best && item.faceIndex === best.faceIndex ? "best" : ""}">
-              <img src="${item.crop}" alt="Detected candidate face ${item.faceIndex + 1}">
+              <img src="${item.crop}" alt="${escapeHtml(t("label.detected_candidate_face_with_index", { index: item.faceIndex + 1 }))}">
               <strong>${item.similarity}%</strong>
-              <span>Face ${item.faceIndex + 1}</span>
-              <span>cos=${formatNumber(item.cosine, 3)}</span>
+              <span>${escapeHtml(t("label.face_with_index", { index: item.faceIndex + 1 }))}</span>
+              <span>${escapeHtml(t("detail.cosine_short", { value: formatNumber(item.cosine, 3) }))}</span>
             </div>
           `).join("")}
         </div>
@@ -1478,7 +1636,7 @@
 
     return `
       <details class="details">
-        <summary>Technical details</summary>
+        <summary>${escapeHtml(t("detail.summary"))}</summary>
         <div class="detail-grid">
           ${cells.map(([label, value]) => `
             <div class="detail-cell">
@@ -1496,16 +1654,16 @@
     if (!state.modelsReady) {
       elements.candidateMessage.className = state.modelError ? "message error" : "message";
       elements.candidateMessage.textContent = state.modelError
-        ? "Model not loaded. Candidate images cannot be processed until the local model bundle is available."
-        : "Local models are loading. Candidate images can be queued now.";
+        ? t("message.candidates.model_unavailable")
+        : t("message.candidates.loading_models");
       return;
     }
 
     if (!hasUsableReference()) {
       elements.candidateMessage.className = "message";
       elements.candidateMessage.textContent = state.candidates.length
-        ? `${state.candidates.length} candidate image(s) queued. Select a reference face to start comparison.`
-        : "Add a reference face first or add candidate images now; queued images will process once the reference is ready.";
+        ? t("message.candidates.queue_wait_reference", { count: state.candidates.length })
+        : t("candidate.help.initial");
       return;
     }
 
@@ -1513,29 +1671,29 @@
     const processed = state.candidates.filter((candidate) => candidate.result).length;
     elements.candidateMessage.className = "message";
     elements.candidateMessage.textContent = queued
-      ? `${queued} image(s) queued for local processing.`
-      : `${processed} candidate image(s) processed locally.`;
+      ? t("message.files.queued_only", { count: queued })
+      : t("message.candidates.processed", { count: processed });
   }
 
   // ---------- CSV export ----------
 
   function exportCsv() {
     const rows = [[
-      "filename",
-      "status",
-      "face_count",
-      "similarity_percent",
-      "interpretation",
-      "cosine_similarity",
-      "euclidean_distance",
-      "best_face_index",
-      "detector_score",
-      "yaw_ratio",
-      "pitch_ratio",
-      "roll_degrees",
-      "blur_variance",
-      "quality_issues",
-      "error"
+      t("csv.filename"),
+      t("csv.status"),
+      t("csv.face_count"),
+      t("csv.similarity_percent"),
+      t("csv.interpretation"),
+      t("csv.cosine_similarity"),
+      t("csv.euclidean_distance"),
+      t("csv.best_face_index"),
+      t("csv.detector_score"),
+      t("csv.yaw_ratio"),
+      t("csv.pitch_ratio"),
+      t("csv.roll_degrees"),
+      t("csv.blur_variance"),
+      t("csv.quality_issues"),
+      t("csv.error")
     ]];
 
     for (const candidate of getSortedCandidates()) {
@@ -1544,10 +1702,10 @@
       const quality = best ? best.quality : null;
       rows.push([
         candidate.fileName,
-        result ? result.statusText : candidate.status,
+        result ? t(result.statusKey || "candidate.state.pending", result.statusVars || {}) : t("candidate.state.pending"),
         result ? String(result.faceCount || 0) : "",
         best ? String(best.similarity) : "",
-        best ? best.interpretation : "",
+        best ? t(best.interpretationKey) : "",
         best ? formatNumber(best.cosine, 6) : "",
         best ? formatNumber(best.distance, 6) : "",
         best ? String(best.faceIndex + 1) : "",
@@ -1556,8 +1714,8 @@
         quality ? formatNumber(quality.pitchRatio, 3) : "",
         quality ? formatNumber(quality.rollDegrees, 2) : "",
         quality ? formatNumber(quality.blurVariance, 1) : "",
-        best && best.qualityIssues ? best.qualityIssues.join("; ") : "",
-        result && result.error ? result.error : ""
+        best && best.qualityIssues ? best.qualityIssues.map((key) => t(key)).join("; ") : "",
+        result && result.errorKey ? t(result.errorKey, result.errorVars || {}) : ""
       ]);
     }
 
@@ -1566,7 +1724,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `facetrace-results-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+    link.download = `${t("csv.filename_prefix")}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1579,6 +1737,16 @@
   }
 
   // ---------- bootstrap ----------
+
+  state.locales = window.FACETRACE_EMBEDDED_LOCALES || {};
+  state.locale = getInitialLocale();
+  if (elements.languageSelect) {
+    elements.languageSelect.value = state.locale;
+    elements.languageSelect.addEventListener("change", () => {
+      setLocale(elements.languageSelect.value, true);
+    });
+  }
+  applyI18nToDom();
 
   renderReference();
   renderResults();

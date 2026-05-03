@@ -4,74 +4,82 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>FaceTrace Offline</title>
+  <title data-i18n="app.title"></title>
   <style>
 {{FACETRACE_CSS}}  </style>
 </head>
 <body>
-  <a class="github-ribbon" href="https://github.com/sponsors/pascal-gujer" target="_blank" rel="noopener noreferrer" aria-label="Sponsor FaceTrace on GitHub">
+  <a class="github-ribbon" href="https://github.com/sponsors/pascal-gujer" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="sponsor.aria" aria-label="">
     <svg class="github-ribbon-heart" viewBox="0 0 16 16" aria-hidden="true">
       <path d="M8 14s-6-3.6-6-8.1C2 3.7 3.5 2 5.5 2c1.1 0 2 .5 2.5 1.3C8.5 2.5 9.4 2 10.5 2c2 0 3.5 1.7 3.5 3.9C14 10.4 8 14 8 14z"></path>
     </svg>
-    <span>Sponsor on GitHub</span>
+    <span data-i18n="sponsor.label"></span>
   </a>
   <div class="app-shell">
     <header class="app-header">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">FT</div>
         <div>
-          <h1>FaceTrace Offline</h1>
-          <p class="subtitle">Local face similarity comparison for selected images.</p>
+          <h1 data-i18n="brand.title"></h1>
+          <p class="subtitle" data-i18n="brand.subtitle"></p>
         </div>
       </div>
-      <div class="privacy-pill">All processing happens locally in your browser. No data leaves your device.</div>
+      <div class="header-controls">
+        <label class="language-label" for="languageSelect" data-i18n="language.label"></label>
+        <select class="select-control language-select" id="languageSelect">
+          <option value="en" data-i18n="language.option.en"></option>
+          <option value="de" data-i18n="language.option.de"></option>
+          <option value="fr" data-i18n="language.option.fr"></option>
+        </select>
+        <div class="privacy-pill" data-i18n="privacy.pill"></div>
+      </div>
     </header>
 
-    <section class="notice" aria-label="Privacy and limitations">
+    <section class="notice" data-i18n-aria-label="notice.aria" aria-label="">
       <div>
-        <strong>Probabilistic visual comparison, not identity verification.</strong>
-        <p>Results are not suitable for legal, forensic, employment, access-control, or definitive identity decisions. Treat the percentage as a local similarity signal only.</p>
+        <strong data-i18n="notice.title"></strong>
+        <p data-i18n="notice.body"></p>
       </div>
       <details>
-        <summary>Percentage method</summary>
-        <p>The app aligns each detected face, extracts a 256-number ArcFace descriptor, and compares descriptors with cosine similarity. The percentage uses <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, so cosine 0.32 maps to 50%. Raw cosine similarity and Euclidean distance appear only in technical details.</p>
+        <summary data-i18n="notice.method.summary"></summary>
+        <p data-i18n-html="notice.method.body"></p>
       </details>
     </section>
 
-    <section class="action-bar" aria-label="Session controls">
+    <section class="action-bar" data-i18n-aria-label="session.controls.aria" aria-label="">
       <div class="model-status" id="modelStatus">
         <span class="status-dot" id="modelDot" aria-hidden="true"></span>
-        <span id="modelStatusText">Loading local face models...</span>
+        <span id="modelStatusText" data-i18n="model.loading.initial"></span>
       </div>
       <div class="actions">
-        <button class="button" type="button" id="clearButton">Clear session</button>
-        <button class="button primary" type="button" id="exportButton" disabled>Export CSV</button>
+        <button class="button" type="button" id="clearButton" data-i18n="button.clear"></button>
+        <button class="button primary" type="button" id="exportButton" disabled data-i18n="button.export"></button>
       </div>
       <div class="progress-wrap" id="progressWrap" aria-live="polite">
         <progress id="progressBar" max="1" value="0"></progress>
-        <span id="progressText">Idle</span>
+        <span id="progressText" data-i18n="progress.idle"></span>
       </div>
     </section>
 
     <section class="workspace">
       <article class="panel" aria-labelledby="referenceTitle">
         <div class="panel-header">
-          <h2 id="referenceTitle">Reference face</h2>
-          <button class="button" type="button" id="referencePickButton">Choose image</button>
+          <h2 id="referenceTitle" data-i18n="reference.title"></h2>
+          <button class="button" type="button" id="referencePickButton" data-i18n="button.choose_image"></button>
         </div>
         <div class="panel-body">
-          <div class="dropzone" id="referenceDropzone" role="button" tabindex="0" aria-label="Select or drop one reference image">
+          <div class="dropzone" id="referenceDropzone" role="button" tabindex="0" data-i18n-aria-label="reference.dropzone.aria" aria-label="">
             <div>
-              <strong>Drop one reference image</strong>
-              <span>JPEG, PNG, WebP, AVIF, BMP, or another browser-readable image.</span>
+              <strong data-i18n="reference.dropzone.title"></strong>
+              <span data-i18n="reference.dropzone.hint"></span>
             </div>
           </div>
           <input class="sr-only" id="referenceInput" type="file" accept="image/*">
           <div class="reference-layout">
             <div class="preview-frame" id="referencePreview">
-              <div class="empty-state">No reference image selected.</div>
+              <div class="empty-state" data-i18n="reference.empty"></div>
             </div>
-            <div id="referenceMessage" class="message">Select a clear image with one visible face. If several faces are detected, choose the reference face below.</div>
+            <div id="referenceMessage" class="message" data-i18n="reference.help"></div>
             <div class="face-choices" id="referenceFaces"></div>
           </div>
         </div>
@@ -79,18 +87,18 @@
 
       <article class="panel" aria-labelledby="candidateTitle">
         <div class="panel-header">
-          <h2 id="candidateTitle">Candidate images</h2>
-          <button class="button" type="button" id="candidatePickButton">Add images</button>
+          <h2 id="candidateTitle" data-i18n="candidate.title"></h2>
+          <button class="button" type="button" id="candidatePickButton" data-i18n="button.add_images"></button>
         </div>
         <div class="panel-body">
-          <div class="dropzone" id="candidateDropzone" role="button" tabindex="0" aria-label="Select or drop one or more comparison images">
+          <div class="dropzone" id="candidateDropzone" role="button" tabindex="0" data-i18n-aria-label="candidate.dropzone.aria" aria-label="">
             <div>
-              <strong>Drop one or many comparison images</strong>
-              <span>Each detected face is compared locally against the selected reference face.</span>
+              <strong data-i18n="candidate.dropzone.title"></strong>
+              <span data-i18n="candidate.dropzone.hint"></span>
             </div>
           </div>
           <input class="sr-only" id="candidateInput" type="file" accept="image/*" multiple>
-          <div id="candidateMessage" class="message">Add a reference face first or add candidate images now; queued images will process once the reference is ready.</div>
+          <div id="candidateMessage" class="message" data-i18n="candidate.help.initial"></div>
         </div>
       </article>
     </section>
@@ -98,27 +106,25 @@
     <section class="results-panel" aria-labelledby="resultsTitle">
       <div class="results-header">
         <div>
-          <h2 id="resultsTitle">Results</h2>
-          <div class="summary-counts" id="summaryCounts">No candidate images selected.</div>
+          <h2 id="resultsTitle" data-i18n="results.title"></h2>
+          <div class="summary-counts" id="summaryCounts" data-i18n="results.empty"></div>
         </div>
         <div class="results-tools">
-          <label for="sortSelect" class="sr-only">Sort results</label>
+          <label for="sortSelect" class="sr-only" data-i18n="results.sort.aria"></label>
           <select class="select-control" id="sortSelect">
-            <option value="similarity-desc">Highest percentage first</option>
-            <option value="similarity-asc">Lowest percentage first</option>
-            <option value="name-asc">Filename A to Z</option>
-            <option value="status">Detection status</option>
+            <option value="similarity-desc" data-i18n="results.sort.similarity_desc"></option>
+            <option value="similarity-asc" data-i18n="results.sort.similarity_asc"></option>
+            <option value="name-asc" data-i18n="results.sort.name_asc"></option>
+            <option value="status" data-i18n="results.sort.status"></option>
           </select>
         </div>
       </div>
       <div class="results-list" id="resultsList">
-        <div class="empty-state">Results will appear here after a reference and candidate image are processed.</div>
+        <div class="empty-state" data-i18n="results.list.empty"></div>
       </div>
     </section>
 
-    <footer>
-      Local browser execution only. No localhost server, uploads, telemetry, external calls, cloud APIs, or remote model downloads are used by this application.
-    </footer>
+    <footer data-i18n="footer.disclaimer"></footer>
   </div>
 
   <script>
@@ -130,6 +136,8 @@
   <script>
     /* Embedded gzip-compressed local FaceTrace model bundle generated from models/. */
 {{FACETRACE_MODEL_BUNDLE_JS}}  </script>
+  <script>
+{{FACETRACE_LOCALES_JS}}  </script>
   <script>
 {{FACETRACE_APP_JS}}  </script>
 </body>

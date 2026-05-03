@@ -36,6 +36,7 @@ The app is designed to work from a direct `file://` open. The face-api UMD bundl
 - `src/styles.css`: application styles.
 - `src/canvas-readback-patch.js`: early Canvas 2D readback hint patch.
 - `src/app.js`: application logic.
+- `src/locales/*.json`: flat UI string maps for the embedded language selector; the build checks that all locale files have matching keys.
 - `vendor/face-api.min.js`: vendored `@vladmandic/face-api` UMD bundle (face-api.js v0.22 API, modern TF.js v4 included).
 - `models/embedded-models.js`: generated JavaScript that holds a gzip-compressed, base64-encoded JSON map of all model manifests and weight shards; do not edit it by hand.
 

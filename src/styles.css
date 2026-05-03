@@ -163,6 +163,35 @@ h1 {
   font-weight: 700;
 }
 
+.header-controls {
+  display: grid;
+  grid-template-columns: auto minmax(130px, 170px);
+  align-items: center;
+  gap: 8px 10px;
+  justify-items: end;
+}
+
+.language-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.language-select {
+  width: 100%;
+  min-width: 130px;
+  font-size: 0.9rem;
+}
+
+.header-controls .privacy-pill {
+  grid-column: 1 / -1;
+  width: min(430px, 100%);
+  max-width: none;
+  text-align: left;
+}
+
 .notice {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -743,6 +772,15 @@ footer {
 
   .app-header {
     align-items: stretch;
+  }
+
+  .header-controls {
+    justify-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .header-controls .privacy-pill {
+    width: 100%;
   }
 
   .privacy-pill,

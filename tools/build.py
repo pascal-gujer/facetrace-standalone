@@ -33,6 +33,7 @@ TEMPLATE = ROOT / "src" / "index.template.html"
 STYLE = ROOT / "src" / "styles.css"
 CANVAS_PATCH = ROOT / "src" / "canvas-readback-patch.js"
 APP = ROOT / "src" / "app.js"
+LOCALES_DIR = ROOT / "src" / "locales"
 FACE_API = ROOT / "vendor" / "face-api.min.js"
 MODEL_BUNDLE = ROOT / "models" / "embedded-models.js"
 DEFAULT_OUTPUT = ROOT / "index.html"
@@ -133,6 +134,44 @@ def collect_arcface_assets(entries: dict[str, dict[str, str]]) -> None:
             }
 
 
+def load_locale_maps() -> dict[str, dict[str, str]]:
+    required = ("en", "de", "fr")
+    locales: dict[str, dict[str, str]] = {}
+
+    for code in required:
+        path = LOCALES_DIR / f"{code}.json"
+        try:
+            raw = json.loads(read_text(path))
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"Invalid locale JSON: {path.relative_to(ROOT)}") from exc
+        if not isinstance(raw, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in raw.items()):
+            raise SystemExit(f"Locale file must be a flat string map: {path.relative_to(ROOT)}")
+        locales[code] = raw
+
+    base_keys = set(locales["en"].keys())
+    for code in required:
+        keys = set(locales[code].keys())
+        missing = sorted(base_keys - keys)
+        extra = sorted(keys - base_keys)
+        if missing or extra:
+            details: list[str] = []
+            if missing:
+                details.append(f"missing keys: {', '.join(missing[:8])}{'...' if len(missing) > 8 else ''}")
+            if extra:
+                details.append(f"extra keys: {', '.join(extra[:8])}{'...' if len(extra) > 8 else ''}")
+            raise SystemExit(f"Locale key mismatch in {code}.json ({'; '.join(details)})")
+
+    return locales
+
+
+def build_locales_script(locales: dict[str, dict[str, str]]) -> str:
+    payload = json.dumps(locales, separators=(",", ":"), ensure_ascii=False)
+    return (
+        "/* Embedded locale resources for FaceTrace Offline. */\n"
+        f"window.FACETRACE_EMBEDDED_LOCALES = {payload};\n"
+    )
+
+
 def build_model_bundle() -> str:
     entries: dict[str, dict[str, str]] = {}
     collect_face_api_assets(entries)
@@ -156,7 +195,7 @@ def build_model_bundle() -> str:
     )
 
 
-def build_html(model_bundle: str) -> str:
+def build_html(model_bundle: str, locales_script: str) -> str:
     html = read_text(TEMPLATE)
 
     for marker, path in REPLACEMENTS.items():
@@ -171,7 +210,12 @@ def build_html(model_bundle: str) -> str:
         raise SystemExit(f"Template marker missing: {model_marker}")
     html = html.replace(model_marker, inline_script(model_bundle), 1)
 
-    leftover = [m for m in (*REPLACEMENTS.keys(), model_marker) if m in html]
+    locale_marker = "{{FACETRACE_LOCALES_JS}}"
+    if locale_marker not in html:
+        raise SystemExit(f"Template marker missing: {locale_marker}")
+    html = html.replace(locale_marker, inline_script(locales_script), 1)
+
+    leftover = [m for m in (*REPLACEMENTS.keys(), model_marker, locale_marker) if m in html]
     if leftover:
         raise SystemExit(f"Unreplaced template marker(s): {', '.join(leftover)}")
 
@@ -227,7 +271,9 @@ def main(argv: list[str] | None = None) -> int:
 
     output = args.output if args.output.is_absolute() else ROOT / args.output
     generated_model_bundle = build_model_bundle()
-    generated = build_html(generated_model_bundle)
+    locales = load_locale_maps()
+    generated_locales_script = build_locales_script(locales)
+    generated = build_html(generated_model_bundle, generated_locales_script)
 
     if args.check:
         existing = output.read_text(encoding="utf-8") if output.exists() else ""
