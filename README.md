@@ -39,6 +39,7 @@ The app is designed to work from a direct `file://` open. The face-api UMD bundl
 - `src/locales/*.json`: flat UI string maps for the embedded language selector; the build checks that all locale files have matching keys.
 - `vendor/face-api.min.js`: vendored `@vladmandic/face-api` UMD bundle (face-api.js v0.22 API, modern TF.js v4 included).
 - `models/embedded-models.js`: generated JavaScript that holds a gzip-compressed, base64-encoded JSON map of all model manifests and weight shards; do not edit it by hand.
+- `docs/search-set-format.md`: portable encrypted search set format for browser exports and external generators.
 
 The unpacked files in `models/` are kept as source/audit copies of the model assets used to generate `models/embedded-models.js`:
 
@@ -122,6 +123,59 @@ Interpretation bands:
 - Below `30%`: very low similarity
 
 These thresholds are deliberately conservative and are not forensic proof.
+
+## Search Sets
+
+Candidate images can be exported as encrypted FaceTrace search sets. A search
+set contains filenames, optional real names, thumbnails, face crops, quality
+metrics, optional attribution metadata, and precomputed face descriptors. It
+does not include the selected reference image or the full original candidate
+photos. Once imported, a new reference face can be selected and compared
+against the descriptors without reprocessing the original images.
+
+### Exporting
+
+Click **Export set** in the candidate panel. After confirming the export count,
+the app encrypts the payload with browser-native AES-256-GCM and shows a
+single-use share key in the form `ftsk1_<base64url>`. The key is generated
+in-browser by `crypto.getRandomValues`, never persisted, and never sent
+anywhere. The dialog offers:
+
+- **Copy key** — copy via the Clipboard API.
+- **Save key file** — download the share key as a small `.txt` for password
+  managers, USB sticks, or printed backup.
+- **I saved the key — download set** — only then is the `.facetrace-set` file
+  written to disk. Cancelling at this step abandons the encrypted payload.
+
+Store and share the key separately from the `.facetrace-set` file. There is no
+recovery if the key is lost.
+
+### Importing
+
+Click **Import set** in the candidate panel and select a `.facetrace-set` file
+(max 512 MB). For encrypted files the app prompts for the share key; paste the
+`ftsk1_...` key and click **Decrypt**. If the candidate list already has items,
+a follow-up dialog asks whether to **Replace** the current list or **Add** the
+imported items alongside.
+
+If no reference face is loaded, imported descriptors sit ready until a
+reference image is added; the app will then score them automatically.
+
+### Format
+
+The portable on-disk format is documented in [`docs/search-set-format.md`](docs/search-set-format.md)
+so external crawlers or batch generators can produce compatible sets with
+per-item author, license, and source link information. Imported records with
+attribution expose that source/license information through an info button in
+the results UI.
+
+## Languages
+
+The header language picker switches the UI between English, Deutsch, and
+Français. The selection persists in `localStorage`. A `?lang=de` or `?lang=fr`
+query parameter overrides both the saved preference and the browser's
+`navigator.language`, which is useful when sharing pre-localized links into the
+hosted Pages build.
 
 ## Privacy
 

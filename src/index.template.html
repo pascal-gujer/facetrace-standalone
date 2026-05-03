@@ -4,18 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data:; media-src 'self' blob: data:; worker-src 'self' blob:; child-src 'self' blob:; form-action 'none'; frame-ancestors 'none'; base-uri 'none'">
   <title data-i18n="app.title"></title>
   <style>
 {{FACETRACE_CSS}}  </style>
 </head>
 <body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip_to_content"></a>
   <a class="github-ribbon" href="https://github.com/sponsors/pascal-gujer" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="sponsor.aria" aria-label="">
     <svg class="github-ribbon-heart" viewBox="0 0 16 16" aria-hidden="true">
       <path d="M8 14s-6-3.6-6-8.1C2 3.7 3.5 2 5.5 2c1.1 0 2 .5 2.5 1.3C8.5 2.5 9.4 2 10.5 2c2 0 3.5 1.7 3.5 3.9C14 10.4 8 14 8 14z"></path>
     </svg>
     <span data-i18n="sponsor.label"></span>
   </a>
-  <div class="app-shell">
+  <div class="app-shell" id="main">
     <header class="app-header">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">FT</div>
@@ -88,7 +90,11 @@
       <article class="panel" aria-labelledby="candidateTitle">
         <div class="panel-header">
           <h2 id="candidateTitle" data-i18n="candidate.title"></h2>
-          <button class="button" type="button" id="candidatePickButton" data-i18n="button.add_images"></button>
+          <div class="panel-actions">
+            <button class="button" type="button" id="candidatePickButton" data-i18n="button.add_images"></button>
+            <button class="button" type="button" id="importSetButton" data-i18n="button.import_set"></button>
+            <button class="button" type="button" id="exportSetButton" disabled data-i18n="button.export_set"></button>
+          </div>
         </div>
         <div class="panel-body">
           <div class="dropzone" id="candidateDropzone" role="button" tabindex="0" data-i18n-aria-label="candidate.dropzone.aria" aria-label="">
@@ -98,6 +104,7 @@
             </div>
           </div>
           <input class="sr-only" id="candidateInput" type="file" accept="image/*" multiple>
+          <input class="sr-only" id="searchSetInput" type="file" accept=".facetrace-set">
           <div id="candidateMessage" class="message" data-i18n="candidate.help.initial"></div>
         </div>
       </article>
@@ -126,6 +133,60 @@
 
     <footer data-i18n="footer.disclaimer"></footer>
   </div>
+
+  <dialog class="attribution-dialog" id="attributionDialog" aria-labelledby="attributionDialogTitle">
+    <div class="dialog-header">
+      <h2 id="attributionDialogTitle" data-i18n="attribution.title"></h2>
+      <button class="button" type="button" id="attributionDialogClose" data-i18n="button.close"></button>
+    </div>
+    <div class="dialog-body" id="attributionDialogBody"></div>
+  </dialog>
+
+  <dialog class="app-dialog" id="confirmDialog" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogBody">
+    <div class="dialog-header">
+      <h2 id="confirmDialogTitle"></h2>
+    </div>
+    <div class="dialog-body">
+      <p id="confirmDialogBody"></p>
+    </div>
+    <div class="dialog-actions" id="confirmDialogActions"></div>
+  </dialog>
+
+  <dialog class="app-dialog" id="shareKeyDialog" aria-labelledby="shareKeyDialogTitle" aria-describedby="shareKeyDialogBody">
+    <div class="dialog-header">
+      <h2 id="shareKeyDialogTitle" data-i18n="dialog.share_key.title"></h2>
+    </div>
+    <div class="dialog-body">
+      <p id="shareKeyDialogBody" data-i18n="dialog.share_key.body"></p>
+      <label class="dialog-field-label" for="shareKeyValue" data-i18n="dialog.share_key.label"></label>
+      <div class="share-key-row">
+        <input class="share-key-value" id="shareKeyValue" type="text" readonly autocomplete="off" spellcheck="false">
+      </div>
+      <div class="dialog-status" id="shareKeyCopyStatus" role="status" aria-live="polite"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="button" type="button" id="shareKeyCancelButton" data-i18n="dialog.share_key.cancel"></button>
+      <button class="button" type="button" id="shareKeySaveButton" data-i18n="dialog.share_key.save_file"></button>
+      <button class="button" type="button" id="shareKeyCopyButton" data-i18n="dialog.share_key.copy"></button>
+      <button class="button primary" type="button" id="shareKeyContinueButton" data-i18n="dialog.share_key.continue"></button>
+    </div>
+  </dialog>
+
+  <dialog class="app-dialog" id="importKeyDialog" aria-labelledby="importKeyDialogTitle" aria-describedby="importKeyDialogBody">
+    <div class="dialog-header">
+      <h2 id="importKeyDialogTitle" data-i18n="dialog.import_key.title"></h2>
+    </div>
+    <div class="dialog-body">
+      <p id="importKeyDialogBody" data-i18n="dialog.import_key.body"></p>
+      <label class="dialog-field-label sr-only" for="importKeyInput" data-i18n="dialog.share_key.label"></label>
+      <input class="share-key-value" id="importKeyInput" type="text" autocomplete="off" spellcheck="false">
+      <div class="dialog-status error" id="importKeyError" role="alert" aria-live="assertive"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="button" type="button" id="importKeyCancelButton" data-i18n="dialog.import_key.cancel"></button>
+      <button class="button primary" type="button" id="importKeyConfirmButton" data-i18n="dialog.import_key.confirm"></button>
+    </div>
+  </dialog>
 
   <script>
 {{FACETRACE_CANVAS_PATCH_JS}}  </script>

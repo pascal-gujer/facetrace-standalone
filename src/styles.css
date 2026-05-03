@@ -55,6 +55,7 @@ select:focus-visible,
 summary:focus-visible,
 .dropzone:focus-visible,
 .face-choice:focus-visible,
+.info-button:focus-visible,
 .github-ribbon:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.35);
   outline-offset: 2px;
@@ -372,6 +373,13 @@ progress::-moz-progress-bar {
   letter-spacing: 0;
 }
 
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .panel-body {
   display: grid;
   gap: 14px;
@@ -599,6 +607,28 @@ progress::-moz-progress-bar {
   white-space: nowrap;
 }
 
+.name-field {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.name-input {
+  width: min(340px, 100%);
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 9px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.name-input::placeholder {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .status-row {
   display: flex;
   flex-wrap: wrap;
@@ -631,6 +661,24 @@ progress::-moz-progress-bar {
 .badge.error {
   color: var(--danger);
   background: var(--danger-soft);
+}
+
+.info-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border: 1px solid #b7c3d4;
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--accent-strong);
+  background: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.info-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .score-block {
@@ -706,6 +754,74 @@ progress::-moz-progress-bar {
   font-size: 0.8rem;
 }
 
+.attribution-dialog {
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.attribution-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.dialog-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.dialog-body {
+  padding: 16px;
+}
+
+.attribution-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.attribution-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+
+.attribution-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.attribution-row b {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.attribution-row span,
+.attribution-row a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.attribution-row a {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
 .candidate-faces {
   display: flex;
   flex-wrap: wrap;
@@ -755,6 +871,119 @@ progress::-moz-progress-bar {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 140ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid rgba(37, 99, 235, 0.6);
+  outline-offset: 2px;
+}
+
+.app-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.app-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.app-dialog .dialog-body {
+  padding: 16px;
+  font-size: 0.95rem;
+}
+
+.app-dialog .dialog-body p {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.app-dialog .dialog-body p:last-of-type {
+  margin-bottom: 14px;
+}
+
+.dialog-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.share-key-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.share-key-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92rem;
+  word-break: break-all;
+}
+
+.share-key-value:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.dialog-status {
+  min-height: 1.2em;
+  margin-top: 8px;
+  font-size: 0.86rem;
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.dialog-status.error,
+.dialog-status:empty {
+  color: var(--danger);
+}
+
+.dialog-status:empty {
+  visibility: hidden;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+  background: var(--surface-soft);
 }
 
 footer {
@@ -848,6 +1077,7 @@ footer {
   }
 
   .actions,
+  .panel-actions,
   .button,
   .select-control {
     width: 100%;
@@ -872,5 +1102,37 @@ footer {
 
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dialog-header .button {
+    width: auto;
+  }
+
+  .attribution-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .dialog-actions {
+    justify-content: stretch;
+  }
+
+  .dialog-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .share-key-row {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

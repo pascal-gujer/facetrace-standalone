@@ -10,6 +10,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data:; media-src 'self' blob: data:; worker-src 'self' blob:; child-src 'self' blob:; form-action 'none'; frame-ancestors 'none'; base-uri 'none'">
   <title data-i18n="app.title"></title>
   <style>
 :root {
@@ -69,6 +70,7 @@ select:focus-visible,
 summary:focus-visible,
 .dropzone:focus-visible,
 .face-choice:focus-visible,
+.info-button:focus-visible,
 .github-ribbon:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.35);
   outline-offset: 2px;
@@ -386,6 +388,13 @@ progress::-moz-progress-bar {
   letter-spacing: 0;
 }
 
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .panel-body {
   display: grid;
   gap: 14px;
@@ -613,6 +622,28 @@ progress::-moz-progress-bar {
   white-space: nowrap;
 }
 
+.name-field {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.name-input {
+  width: min(340px, 100%);
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 9px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.name-input::placeholder {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .status-row {
   display: flex;
   flex-wrap: wrap;
@@ -645,6 +676,24 @@ progress::-moz-progress-bar {
 .badge.error {
   color: var(--danger);
   background: var(--danger-soft);
+}
+
+.info-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border: 1px solid #b7c3d4;
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--accent-strong);
+  background: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.info-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .score-block {
@@ -720,6 +769,74 @@ progress::-moz-progress-bar {
   font-size: 0.8rem;
 }
 
+.attribution-dialog {
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.attribution-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.dialog-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.dialog-body {
+  padding: 16px;
+}
+
+.attribution-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.attribution-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+
+.attribution-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.attribution-row b {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.attribution-row span,
+.attribution-row a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.attribution-row a {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
 .candidate-faces {
   display: flex;
   flex-wrap: wrap;
@@ -769,6 +886,119 @@ progress::-moz-progress-bar {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 140ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid rgba(37, 99, 235, 0.6);
+  outline-offset: 2px;
+}
+
+.app-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.app-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.app-dialog .dialog-body {
+  padding: 16px;
+  font-size: 0.95rem;
+}
+
+.app-dialog .dialog-body p {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.app-dialog .dialog-body p:last-of-type {
+  margin-bottom: 14px;
+}
+
+.dialog-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.share-key-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.share-key-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92rem;
+  word-break: break-all;
+}
+
+.share-key-value:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.dialog-status {
+  min-height: 1.2em;
+  margin-top: 8px;
+  font-size: 0.86rem;
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.dialog-status.error,
+.dialog-status:empty {
+  color: var(--danger);
+}
+
+.dialog-status:empty {
+  visibility: hidden;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+  background: var(--surface-soft);
 }
 
 footer {
@@ -862,6 +1092,7 @@ footer {
   }
 
   .actions,
+  .panel-actions,
   .button,
   .select-control {
     width: 100%;
@@ -887,17 +1118,50 @@ footer {
   .detail-grid {
     grid-template-columns: 1fr;
   }
+
+  .dialog-header .button {
+    width: auto;
+  }
+
+  .attribution-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .dialog-actions {
+    justify-content: stretch;
+  }
+
+  .dialog-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .share-key-row {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip_to_content"></a>
   <a class="github-ribbon" href="https://github.com/sponsors/pascal-gujer" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="sponsor.aria" aria-label="">
     <svg class="github-ribbon-heart" viewBox="0 0 16 16" aria-hidden="true">
       <path d="M8 14s-6-3.6-6-8.1C2 3.7 3.5 2 5.5 2c1.1 0 2 .5 2.5 1.3C8.5 2.5 9.4 2 10.5 2c2 0 3.5 1.7 3.5 3.9C14 10.4 8 14 8 14z"></path>
     </svg>
     <span data-i18n="sponsor.label"></span>
   </a>
-  <div class="app-shell">
+  <div class="app-shell" id="main">
     <header class="app-header">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">FT</div>
@@ -970,7 +1234,11 @@ footer {
       <article class="panel" aria-labelledby="candidateTitle">
         <div class="panel-header">
           <h2 id="candidateTitle" data-i18n="candidate.title"></h2>
-          <button class="button" type="button" id="candidatePickButton" data-i18n="button.add_images"></button>
+          <div class="panel-actions">
+            <button class="button" type="button" id="candidatePickButton" data-i18n="button.add_images"></button>
+            <button class="button" type="button" id="importSetButton" data-i18n="button.import_set"></button>
+            <button class="button" type="button" id="exportSetButton" disabled data-i18n="button.export_set"></button>
+          </div>
         </div>
         <div class="panel-body">
           <div class="dropzone" id="candidateDropzone" role="button" tabindex="0" data-i18n-aria-label="candidate.dropzone.aria" aria-label="">
@@ -980,6 +1248,7 @@ footer {
             </div>
           </div>
           <input class="sr-only" id="candidateInput" type="file" accept="image/*" multiple>
+          <input class="sr-only" id="searchSetInput" type="file" accept=".facetrace-set">
           <div id="candidateMessage" class="message" data-i18n="candidate.help.initial"></div>
         </div>
       </article>
@@ -1008,6 +1277,60 @@ footer {
 
     <footer data-i18n="footer.disclaimer"></footer>
   </div>
+
+  <dialog class="attribution-dialog" id="attributionDialog" aria-labelledby="attributionDialogTitle">
+    <div class="dialog-header">
+      <h2 id="attributionDialogTitle" data-i18n="attribution.title"></h2>
+      <button class="button" type="button" id="attributionDialogClose" data-i18n="button.close"></button>
+    </div>
+    <div class="dialog-body" id="attributionDialogBody"></div>
+  </dialog>
+
+  <dialog class="app-dialog" id="confirmDialog" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogBody">
+    <div class="dialog-header">
+      <h2 id="confirmDialogTitle"></h2>
+    </div>
+    <div class="dialog-body">
+      <p id="confirmDialogBody"></p>
+    </div>
+    <div class="dialog-actions" id="confirmDialogActions"></div>
+  </dialog>
+
+  <dialog class="app-dialog" id="shareKeyDialog" aria-labelledby="shareKeyDialogTitle" aria-describedby="shareKeyDialogBody">
+    <div class="dialog-header">
+      <h2 id="shareKeyDialogTitle" data-i18n="dialog.share_key.title"></h2>
+    </div>
+    <div class="dialog-body">
+      <p id="shareKeyDialogBody" data-i18n="dialog.share_key.body"></p>
+      <label class="dialog-field-label" for="shareKeyValue" data-i18n="dialog.share_key.label"></label>
+      <div class="share-key-row">
+        <input class="share-key-value" id="shareKeyValue" type="text" readonly autocomplete="off" spellcheck="false">
+      </div>
+      <div class="dialog-status" id="shareKeyCopyStatus" role="status" aria-live="polite"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="button" type="button" id="shareKeyCancelButton" data-i18n="dialog.share_key.cancel"></button>
+      <button class="button" type="button" id="shareKeySaveButton" data-i18n="dialog.share_key.save_file"></button>
+      <button class="button" type="button" id="shareKeyCopyButton" data-i18n="dialog.share_key.copy"></button>
+      <button class="button primary" type="button" id="shareKeyContinueButton" data-i18n="dialog.share_key.continue"></button>
+    </div>
+  </dialog>
+
+  <dialog class="app-dialog" id="importKeyDialog" aria-labelledby="importKeyDialogTitle" aria-describedby="importKeyDialogBody">
+    <div class="dialog-header">
+      <h2 id="importKeyDialogTitle" data-i18n="dialog.import_key.title"></h2>
+    </div>
+    <div class="dialog-body">
+      <p id="importKeyDialogBody" data-i18n="dialog.import_key.body"></p>
+      <label class="dialog-field-label sr-only" for="importKeyInput" data-i18n="dialog.share_key.label"></label>
+      <input class="share-key-value" id="importKeyInput" type="text" autocomplete="off" spellcheck="false">
+      <div class="dialog-status error" id="importKeyError" role="alert" aria-live="assertive"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="button" type="button" id="importKeyCancelButton" data-i18n="dialog.import_key.cancel"></button>
+      <button class="button primary" type="button" id="importKeyConfirmButton" data-i18n="dialog.import_key.confirm"></button>
+    </div>
+  </dialog>
 
   <script>
 (() => {
@@ -6068,7 +6391,7 @@ window.FACETRACE_EMBEDDED_MODELS_GZIP_B64 = "H4sIAAAAAAAC/8S6aZejypkt/F/OV/k6IZh
   </script>
   <script>
 /* Embedded locale resources for FaceTrace Offline. */
-window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","sponsor.aria":"Sponsor FaceTrace on GitHub","sponsor.label":"Sponsor on GitHub","brand.title":"FaceTrace Offline","brand.subtitle":"Local face similarity comparison for selected images.","privacy.pill":"All processing happens locally in your browser. No data leaves your device.","language.label":"Language","language.option.en":"English","language.option.de":"German","language.option.fr":"French","notice.aria":"Privacy and limitations","notice.title":"Probabilistic visual comparison, not identity verification.","notice.body":"Results are not suitable for legal, forensic, employment, access-control, or definitive identity decisions. Treat the percentage as a local similarity signal only.","notice.method.summary":"Percentage method","notice.method.body":"The app aligns each detected face, extracts a 256-number ArcFace descriptor, and compares descriptors with cosine similarity. The percentage uses <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, so cosine 0.32 maps to 50%. Raw cosine similarity and Euclidean distance appear only in technical details.","session.controls.aria":"Session controls","model.loading.initial":"Loading local face models...","button.clear":"Clear session","button.export":"Export CSV","progress.idle":"Idle","reference.title":"Reference face","button.choose_image":"Choose image","reference.dropzone.aria":"Select or drop one reference image","reference.dropzone.title":"Drop one reference image","reference.dropzone.hint":"JPEG, PNG, WebP, AVIF, BMP, or another browser-readable image.","reference.empty":"No reference image selected.","reference.help":"Select a clear image with one visible face. If several faces are detected, choose the reference face below.","candidate.title":"Candidate images","button.add_images":"Add images","candidate.dropzone.aria":"Select or drop one or more comparison images","candidate.dropzone.title":"Drop one or many comparison images","candidate.dropzone.hint":"Each detected face is compared locally against the selected reference face.","candidate.help.initial":"Add a reference face first or add candidate images now; queued images will process once the reference is ready.","results.title":"Results","results.empty":"No candidate images selected.","results.sort.aria":"Sort results","results.sort.similarity_desc":"Highest percentage first","results.sort.similarity_asc":"Lowest percentage first","results.sort.name_asc":"Filename A to Z","results.sort.status":"Detection status","results.list.empty":"Results will appear here after a reference and candidate image are processed.","footer.disclaimer":"Local browser execution only. No localhost server, uploads, telemetry, external calls, cloud APIs, or remote model downloads are used by this application.","status.model.decoding":"Decoding local model bundle...","status.model.select_backend":"Selecting TensorFlow.js backend...","status.model.loading_detector":"Loading detector + landmarks ({backend})...","status.model.loading_arcface":"Loading ArcFace recognizer ({backend})...","status.model.ready":"Local face models ready ({backend}). Offline mode is active.","status.model.error":"Model not loaded: {message}","status.model.unavailable_hint":"Model not loaded. Confirm you are opening the generated self-contained index.html.","progress.reference.processing":"Processing reference image...","progress.candidates.processing":"Processing candidate images...","progress.none_queued":"No queued images.","progress.candidate.processing":"Processing {fileName}...","progress.candidates.done":"{completed} of {total} candidate image(s) processed.","message.reference.processing":"Detecting faces and extracting the local descriptor...","message.reference.ready":"Reference face ready. Candidate images will be sorted by similarity percentage.","message.reference.multiple":"Multiple faces detected ({count}). The selected face below is used as the reference.","message.reference.faces_label":"Detected reference faces","message.files.none_image":"No browser-readable image files were selected.","message.files.queued_only":"{count} image(s) queued for local processing.","message.files.queued_mixed":"{accepted} image(s) queued. {rejected} non-image file(s) ignored.","message.candidates.queue_wait_reference":"{count} candidate image(s) queued. Select a reference face to start comparison.","message.candidates.loading_models":"Local models are loading. Candidate images can be queued now.","message.candidates.model_unavailable":"Model not loaded. Candidate images cannot be processed until the local model bundle is available.","message.candidates.processed":"{count} candidate image(s) processed locally.","candidate.state.processing":"Processing","candidate.state.queued":"Queued","candidate.state.waiting_reference":"Waiting for reference","candidate.state.pending":"Pending","candidate.state.awaiting_processing":"Awaiting local processing","candidate.state.model_not_loaded":"Model not loaded","candidate.state.no_score":"No score","candidate.state.no_similarity_score":"No similarity score","candidate.state.no_preview":"No preview","candidate.state.no_face":"No face","candidate.state.face_detected":"Face detected","candidate.state.multiple_faces":"Multiple faces detected ({count}); closest face compared","label.image":"Image","label.best_face":"Best face","label.face":"Face","label.face_with_index":"Face {index}","label.reference_face_with_index":"Reference face {index}","label.detected_candidate_face_with_index":"Detected candidate face {index}","label.face_count":"{count} face(s)","label.quality":"quality: {issues}","alt.reference_image_preview":"Reference image preview","alt.candidate_image_preview":"Candidate image preview","alt.best_detected_face_preview":"Best detected face preview","detail.summary":"Technical details","detail.filename":"Filename","detail.detection_status":"Detection status","detail.detected_faces":"Detected faces","detail.image_size":"Image size used","detail.similarity":"Similarity","detail.cosine":"Cosine similarity","detail.euclidean":"Euclidean distance","detail.detector_score":"Detector score","detail.yaw_ratio":"Yaw ratio","detail.pitch_ratio":"Pitch ratio","detail.roll":"Roll (deg)","detail.sharpness":"Sharpness (Lap. var)","detail.error":"Error","detail.similarity_value":"{percent}% ({interpretation})","detail.cosine_short":"cos={value}","similarity.very_high":"very similar","similarity.high":"similar","similarity.medium":"possibly similar","similarity.low":"low similarity","similarity.very_low":"very low similarity","quality.low_detector":"low detector confidence","quality.off_axis_yaw":"off-axis yaw","quality.off_axis_pitch":"off-axis pitch","quality.low_sharpness":"low sharpness","error.canvas_unavailable":"Canvas 2D context is unavailable","error.bundle_missing":"Local embedded model bundle is missing. This index.html copy may be incomplete.","error.decompression_missing":"This browser lacks DecompressionStream. Use a recent Chromium, Firefox, or Safari.","error.bundle_corrupt":"Embedded model bundle JSON is corrupt.","error.bundle_shape":"Embedded model bundle has an unexpected shape.","error.tf_unavailable":"Embedded TensorFlow.js did not initialize. This index.html copy may be incomplete.","error.faceapi_unavailable":"Embedded face-api did not initialize. This index.html copy may be incomplete.","error.faceapi_tf_unavailable":"Embedded face-api did not expose TensorFlow.js. This index.html copy may be incomplete.","error.network_disabled":"Network requests are disabled in FaceTrace Offline.","error.blocked_local_request":"Blocked non-embedded local request: {name}","error.model_not_loaded":"Model not loaded yet.","error.model_or_reference_missing":"Model not loaded or reference face missing","error.image_unreadable":"Image could not be read","error.image_unreadable_help":"Image could not be read. Select a browser-readable image file.","error.preview_generation":"Image preview could not be generated","error.no_face_detected":"No face detected","error.unexpected":"Unexpected error: {message}","summary.counts":"{done} of {total} processed, {scored} scored, {errors} with errors.","csv.filename":"filename","csv.status":"status","csv.face_count":"face_count","csv.similarity_percent":"similarity_percent","csv.interpretation":"interpretation","csv.cosine_similarity":"cosine_similarity","csv.euclidean_distance":"euclidean_distance","csv.best_face_index":"best_face_index","csv.detector_score":"detector_score","csv.yaw_ratio":"yaw_ratio","csv.pitch_ratio":"pitch_ratio","csv.roll_degrees":"roll_degrees","csv.blur_variance":"blur_variance","csv.quality_issues":"quality_issues","csv.error":"error","csv.filename_prefix":"facetrace-results"},"de":{"app.title":"FaceTrace Offline","sponsor.aria":"FaceTrace auf GitHub sponsern","sponsor.label":"Auf GitHub sponsern","brand.title":"FaceTrace Offline","brand.subtitle":"Lokaler Gesichtsähnlichkeitsvergleich für ausgewählte Bilder.","privacy.pill":"Die gesamte Verarbeitung erfolgt lokal in Ihrem Browser. Es verlassen keine Daten Ihr Gerät.","language.label":"Sprache","language.option.en":"Englisch","language.option.de":"Deutsch","language.option.fr":"Französisch","notice.aria":"Datenschutz und Einschränkungen","notice.title":"Wahrscheinlichkeitsbasierter visueller Vergleich, keine Identitätsfeststellung.","notice.body":"Die Ergebnisse sind nicht für rechtliche, forensische, beschäftigungsbezogene, zugangskontrollbezogene oder endgültige Identitätsentscheidungen geeignet. Betrachten Sie den Prozentsatz nur als lokales Ähnlichkeitssignal.","notice.method.summary":"Prozentmethode","notice.method.body":"Die App richtet jedes erkannte Gesicht aus, extrahiert einen ArcFace-Deskriptor mit 256 Werten und vergleicht Deskriptoren per Kosinusähnlichkeit. Der Prozentwert nutzt <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, sodass Kosinus 0,32 auf 50% abgebildet wird. Rohe Kosinusähnlichkeit und euklidische Distanz erscheinen nur in den technischen Details.","session.controls.aria":"Sitzungssteuerung","model.loading.initial":"Lokale Gesichtsmodelle werden geladen...","button.clear":"Sitzung löschen","button.export":"CSV exportieren","progress.idle":"Leerlauf","reference.title":"Referenzgesicht","button.choose_image":"Bild wählen","reference.dropzone.aria":"Ein Referenzbild auswählen oder ablegen","reference.dropzone.title":"Ein Referenzbild hier ablegen","reference.dropzone.hint":"JPEG, PNG, WebP, AVIF, BMP oder ein anderes browserlesbares Bild.","reference.empty":"Kein Referenzbild ausgewählt.","reference.help":"Wählen Sie ein klares Bild mit einem sichtbaren Gesicht. Wenn mehrere Gesichter erkannt werden, wählen Sie unten das Referenzgesicht.","candidate.title":"Vergleichsbilder","button.add_images":"Bilder hinzufügen","candidate.dropzone.aria":"Ein oder mehrere Vergleichsbilder auswählen oder ablegen","candidate.dropzone.title":"Ein oder mehrere Vergleichsbilder hier ablegen","candidate.dropzone.hint":"Jedes erkannte Gesicht wird lokal mit dem ausgewählten Referenzgesicht verglichen.","candidate.help.initial":"Fügen Sie zuerst ein Referenzgesicht hinzu oder fügen Sie jetzt Vergleichsbilder hinzu; wartende Bilder werden verarbeitet, sobald die Referenz bereit ist.","results.title":"Ergebnisse","results.empty":"Keine Vergleichsbilder ausgewählt.","results.sort.aria":"Ergebnisse sortieren","results.sort.similarity_desc":"Höchster Prozentsatz zuerst","results.sort.similarity_asc":"Niedrigster Prozentsatz zuerst","results.sort.name_asc":"Dateiname A bis Z","results.sort.status":"Erkennungsstatus","results.list.empty":"Ergebnisse erscheinen hier, nachdem ein Referenz- und ein Vergleichsbild verarbeitet wurden.","footer.disclaimer":"Nur lokale Browserausführung. Diese Anwendung verwendet keinen localhost-Server, keine Uploads, keine Telemetrie, keine externen Aufrufe, keine Cloud-APIs und keine Remote-Modelldownloads.","status.model.decoding":"Lokales Modellpaket wird dekodiert...","status.model.select_backend":"TensorFlow.js-Backend wird ausgewählt...","status.model.loading_detector":"Detektor + Landmarken werden geladen ({backend})...","status.model.loading_arcface":"ArcFace-Erkenner wird geladen ({backend})...","status.model.ready":"Lokale Gesichtsmodelle bereit ({backend}). Offline-Modus ist aktiv.","status.model.error":"Modell nicht geladen: {message}","status.model.unavailable_hint":"Modell nicht geladen. Stellen Sie sicher, dass Sie die erzeugte, in sich geschlossene index.html geöffnet haben.","progress.reference.processing":"Referenzbild wird verarbeitet...","progress.candidates.processing":"Vergleichsbilder werden verarbeitet...","progress.none_queued":"Keine Bilder in der Warteschlange.","progress.candidate.processing":"{fileName} wird verarbeitet...","progress.candidates.done":"{completed} von {total} Vergleichsbildern verarbeitet.","message.reference.processing":"Gesichter werden erkannt und lokaler Deskriptor wird extrahiert...","message.reference.ready":"Referenzgesicht bereit. Vergleichsbilder werden nach Ähnlichkeitsprozentsatz sortiert.","message.reference.multiple":"Mehrere Gesichter erkannt ({count}). Das unten ausgewählte Gesicht wird als Referenz verwendet.","message.reference.faces_label":"Erkannte Referenzgesichter","message.files.none_image":"Es wurden keine browserlesbaren Bilddateien ausgewählt.","message.files.queued_only":"{count} Bilddatei(en) zur lokalen Verarbeitung in die Warteschlange gestellt.","message.files.queued_mixed":"{accepted} Bilddatei(en) in Warteschlange. {rejected} Nicht-Bild-Datei(en) ignoriert.","message.candidates.queue_wait_reference":"{count} Vergleichsbild(er) in Warteschlange. Wählen Sie ein Referenzgesicht, um den Vergleich zu starten.","message.candidates.loading_models":"Lokale Modelle werden geladen. Vergleichsbilder können jetzt in die Warteschlange gestellt werden.","message.candidates.model_unavailable":"Modell nicht geladen. Vergleichsbilder können erst verarbeitet werden, wenn das lokale Modellpaket verfügbar ist.","message.candidates.processed":"{count} Vergleichsbild(er) lokal verarbeitet.","candidate.state.processing":"Wird verarbeitet","candidate.state.queued":"In Warteschlange","candidate.state.waiting_reference":"Wartet auf Referenz","candidate.state.pending":"Ausstehend","candidate.state.awaiting_processing":"Wartet auf lokale Verarbeitung","candidate.state.model_not_loaded":"Modell nicht geladen","candidate.state.no_score":"Kein Wert","candidate.state.no_similarity_score":"Kein Ähnlichkeitswert","candidate.state.no_preview":"Keine Vorschau","candidate.state.no_face":"Kein Gesicht","candidate.state.face_detected":"Gesicht erkannt","candidate.state.multiple_faces":"Mehrere Gesichter erkannt ({count}); nächstliegendes Gesicht verglichen","label.image":"Bild","label.best_face":"Bestes Gesicht","label.face":"Gesicht","label.face_with_index":"Gesicht {index}","label.reference_face_with_index":"Referenzgesicht {index}","label.detected_candidate_face_with_index":"Erkanntes Vergleichsgesicht {index}","label.face_count":"{count} Gesicht(er)","label.quality":"Qualität: {issues}","alt.reference_image_preview":"Vorschau des Referenzbilds","alt.candidate_image_preview":"Vorschau des Vergleichsbilds","alt.best_detected_face_preview":"Vorschau des bestpassenden erkannten Gesichts","detail.summary":"Technische Details","detail.filename":"Dateiname","detail.detection_status":"Erkennungsstatus","detail.detected_faces":"Erkannte Gesichter","detail.image_size":"Verwendete Bildgröße","detail.similarity":"Ähnlichkeit","detail.cosine":"Kosinusähnlichkeit","detail.euclidean":"Euklidische Distanz","detail.detector_score":"Detektor-Score","detail.yaw_ratio":"Yaw-Verhältnis","detail.pitch_ratio":"Pitch-Verhältnis","detail.roll":"Roll (Grad)","detail.sharpness":"Schärfe (Lap.-Var.)","detail.error":"Fehler","detail.similarity_value":"{percent}% ({interpretation})","detail.cosine_short":"cos={value}","similarity.very_high":"sehr ähnlich","similarity.high":"ähnlich","similarity.medium":"möglicherweise ähnlich","similarity.low":"geringe Ähnlichkeit","similarity.very_low":"sehr geringe Ähnlichkeit","quality.low_detector":"niedrige Detektorsicherheit","quality.off_axis_yaw":"abweichender Yaw-Winkel","quality.off_axis_pitch":"abweichender Pitch-Winkel","quality.low_sharpness":"geringe Schärfe","error.canvas_unavailable":"Canvas-2D-Kontext ist nicht verfügbar","error.bundle_missing":"Lokales eingebettetes Modellpaket fehlt. Diese index.html-Kopie könnte unvollständig sein.","error.decompression_missing":"Dieser Browser unterstützt DecompressionStream nicht. Verwende ein aktuelles Chromium, Firefox oder Safari.","error.bundle_corrupt":"JSON des eingebetteten Modellpakets ist beschädigt.","error.bundle_shape":"Eingebettetes Modellpaket hat ein unerwartetes Format.","error.tf_unavailable":"Eingebettetes TensorFlow.js wurde nicht initialisiert. Diese index.html-Kopie könnte unvollständig sein.","error.faceapi_unavailable":"Eingebettetes face-api wurde nicht initialisiert. Diese index.html-Kopie könnte unvollständig sein.","error.faceapi_tf_unavailable":"Eingebettetes face-api hat TensorFlow.js nicht bereitgestellt. Diese index.html-Kopie könnte unvollständig sein.","error.network_disabled":"Netzwerkanfragen sind in FaceTrace Offline deaktiviert.","error.blocked_local_request":"Blockierte nicht eingebettete lokale Anfrage: {name}","error.model_not_loaded":"Modell noch nicht geladen.","error.model_or_reference_missing":"Modell nicht geladen oder Referenzgesicht fehlt","error.image_unreadable":"Bild konnte nicht gelesen werden","error.image_unreadable_help":"Bild konnte nicht gelesen werden. Wählen Sie eine browserlesbare Bilddatei.","error.preview_generation":"Bildvorschau konnte nicht erzeugt werden","error.no_face_detected":"Kein Gesicht erkannt","error.unexpected":"Unerwarteter Fehler: {message}","summary.counts":"{done} von {total} verarbeitet, {scored} bewertet, {errors} mit Fehlern.","csv.filename":"dateiname","csv.status":"status","csv.face_count":"gesicht_anzahl","csv.similarity_percent":"aehnlichkeit_prozent","csv.interpretation":"interpretation","csv.cosine_similarity":"kosinus_aehnlichkeit","csv.euclidean_distance":"euklidische_distanz","csv.best_face_index":"bestes_gesicht_index","csv.detector_score":"detektor_score","csv.yaw_ratio":"yaw_verhaeltnis","csv.pitch_ratio":"pitch_verhaeltnis","csv.roll_degrees":"roll_grad","csv.blur_variance":"unschaerfe_varianz","csv.quality_issues":"qualitaetsprobleme","csv.error":"fehler","csv.filename_prefix":"facetrace-ergebnisse"},"fr":{"app.title":"FaceTrace Hors Ligne","sponsor.aria":"Sponsoriser FaceTrace sur GitHub","sponsor.label":"Sponsoriser sur GitHub","brand.title":"FaceTrace Hors Ligne","brand.subtitle":"Comparaison locale de similarité faciale pour des images sélectionnées.","privacy.pill":"Tout le traitement se fait localement dans votre navigateur. Aucune donnée ne quitte votre appareil.","language.label":"Langue","language.option.en":"Anglais","language.option.de":"Allemand","language.option.fr":"Français","notice.aria":"Confidentialité et limites","notice.title":"Comparaison visuelle probabiliste, pas une vérification d'identité.","notice.body":"Les résultats ne conviennent pas à des décisions juridiques, médico-légales, d'emploi, de contrôle d'accès ou d'identité définitive. Interprétez ce pourcentage uniquement comme un signal local de similarité.","notice.method.summary":"Méthode de pourcentage","notice.method.body":"L'application aligne chaque visage détecté, extrait un descripteur ArcFace de 256 valeurs et compare les descripteurs via la similarité cosinus. Le pourcentage utilise <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, ainsi un cosinus de 0,32 correspond à 50%. La similarité cosinus brute et la distance euclidienne n'apparaissent que dans les détails techniques.","session.controls.aria":"Contrôles de session","model.loading.initial":"Chargement des modèles faciaux locaux...","button.clear":"Effacer la session","button.export":"Exporter CSV","progress.idle":"Inactif","reference.title":"Visage de référence","button.choose_image":"Choisir une image","reference.dropzone.aria":"Sélectionner ou déposer une image de référence","reference.dropzone.title":"Déposer une image de référence","reference.dropzone.hint":"JPEG, PNG, WebP, AVIF, BMP, ou une autre image lisible par le navigateur.","reference.empty":"Aucune image de référence sélectionnée.","reference.help":"Sélectionnez une image nette avec un visage visible. Si plusieurs visages sont détectés, choisissez le visage de référence ci-dessous.","candidate.title":"Images candidates","button.add_images":"Ajouter des images","candidate.dropzone.aria":"Sélectionner ou déposer une ou plusieurs images de comparaison","candidate.dropzone.title":"Déposer une ou plusieurs images de comparaison","candidate.dropzone.hint":"Chaque visage détecté est comparé localement au visage de référence sélectionné.","candidate.help.initial":"Ajoutez d'abord un visage de référence ou ajoutez maintenant des images candidates ; les images en attente seront traitées dès que la référence sera prête.","results.title":"Résultats","results.empty":"Aucune image candidate sélectionnée.","results.sort.aria":"Trier les résultats","results.sort.similarity_desc":"Pourcentage le plus élevé d'abord","results.sort.similarity_asc":"Pourcentage le plus faible d'abord","results.sort.name_asc":"Nom de fichier A à Z","results.sort.status":"Statut de détection","results.list.empty":"Les résultats s'afficheront ici après traitement d'une image de référence et d'une image candidate.","footer.disclaimer":"Exécution locale dans le navigateur uniquement. Cette application n'utilise ni serveur localhost, ni téléversements, ni télémétrie, ni appels externes, ni API cloud, ni téléchargements de modèles distants.","status.model.decoding":"Décodage du package local de modèles...","status.model.select_backend":"Sélection du backend TensorFlow.js...","status.model.loading_detector":"Chargement du détecteur + repères ({backend})...","status.model.loading_arcface":"Chargement du reconnaisseur ArcFace ({backend})...","status.model.ready":"Modèles faciaux locaux prêts ({backend}). Le mode hors ligne est actif.","status.model.error":"Modèle non chargé : {message}","status.model.unavailable_hint":"Modèle non chargé. Vérifiez que vous ouvrez bien le fichier index.html généré et autonome.","progress.reference.processing":"Traitement de l'image de référence...","progress.candidates.processing":"Traitement des images candidates...","progress.none_queued":"Aucune image en file d'attente.","progress.candidate.processing":"Traitement de {fileName}...","progress.candidates.done":"{completed} sur {total} image(s) candidate(s) traitée(s).","message.reference.processing":"Détection des visages et extraction du descripteur local...","message.reference.ready":"Visage de référence prêt. Les images candidates seront triées par pourcentage de similarité.","message.reference.multiple":"Plusieurs visages détectés ({count}). Le visage sélectionné ci-dessous est utilisé comme référence.","message.reference.faces_label":"Visages de référence détectés","message.files.none_image":"Aucun fichier image lisible par le navigateur n'a été sélectionné.","message.files.queued_only":"{count} image(s) mise(s) en attente pour traitement local.","message.files.queued_mixed":"{accepted} image(s) en attente. {rejected} fichier(s) non image ignoré(s).","message.candidates.queue_wait_reference":"{count} image(s) candidate(s) en attente. Sélectionnez un visage de référence pour démarrer la comparaison.","message.candidates.loading_models":"Les modèles locaux sont en cours de chargement. Les images candidates peuvent déjà être mises en attente.","message.candidates.model_unavailable":"Modèle non chargé. Les images candidates ne peuvent pas être traitées tant que le bundle de modèles local n'est pas disponible.","message.candidates.processed":"{count} image(s) candidate(s) traitée(s) localement.","candidate.state.processing":"Traitement","candidate.state.queued":"En attente","candidate.state.waiting_reference":"En attente de référence","candidate.state.pending":"En attente","candidate.state.awaiting_processing":"En attente de traitement local","candidate.state.model_not_loaded":"Modèle non chargé","candidate.state.no_score":"Aucun score","candidate.state.no_similarity_score":"Aucun score de similarité","candidate.state.no_preview":"Aucun aperçu","candidate.state.no_face":"Aucun visage","candidate.state.face_detected":"Visage détecté","candidate.state.multiple_faces":"Plusieurs visages détectés ({count}) ; visage le plus proche comparé","label.image":"Image","label.best_face":"Meilleur visage","label.face":"Visage","label.face_with_index":"Visage {index}","label.reference_face_with_index":"Visage de référence {index}","label.detected_candidate_face_with_index":"Visage candidat détecté {index}","label.face_count":"{count} visage(s)","label.quality":"qualité : {issues}","alt.reference_image_preview":"Aperçu de l'image de référence","alt.candidate_image_preview":"Aperçu de l'image candidate","alt.best_detected_face_preview":"Aperçu du meilleur visage détecté","detail.summary":"Détails techniques","detail.filename":"Nom de fichier","detail.detection_status":"Statut de détection","detail.detected_faces":"Visages détectés","detail.image_size":"Taille d'image utilisée","detail.similarity":"Similarité","detail.cosine":"Similarité cosinus","detail.euclidean":"Distance euclidienne","detail.detector_score":"Score détecteur","detail.yaw_ratio":"Ratio de lacet","detail.pitch_ratio":"Ratio de tangage","detail.roll":"Roulis (deg)","detail.sharpness":"Netteté (Var. Lap.)","detail.error":"Erreur","detail.similarity_value":"{percent}% ({interpretation})","detail.cosine_short":"cos={value}","similarity.very_high":"très similaire","similarity.high":"similaire","similarity.medium":"possiblement similaire","similarity.low":"faible similarité","similarity.very_low":"très faible similarité","quality.low_detector":"faible confiance du détecteur","quality.off_axis_yaw":"lacet hors axe","quality.off_axis_pitch":"tangage hors axe","quality.low_sharpness":"faible netteté","error.canvas_unavailable":"Le contexte Canvas 2D est indisponible","error.bundle_missing":"Le bundle de modèles locaux embarqué est manquant. Cette copie de index.html peut être incomplète.","error.decompression_missing":"Ce navigateur ne prend pas en charge DecompressionStream. Utilisez une version récente de Chromium, Firefox ou Safari.","error.bundle_corrupt":"Le JSON du bundle de modèles embarqué est corrompu.","error.bundle_shape":"Le bundle de modèles embarqué a une structure inattendue.","error.tf_unavailable":"TensorFlow.js embarqué ne s'est pas initialisé. Cette copie de index.html peut être incomplète.","error.faceapi_unavailable":"face-api embarqué ne s'est pas initialisé. Cette copie de index.html peut être incomplète.","error.faceapi_tf_unavailable":"face-api embarqué n'a pas exposé TensorFlow.js. Cette copie de index.html peut être incomplète.","error.network_disabled":"Les requêtes réseau sont désactivées dans FaceTrace Hors Ligne.","error.blocked_local_request":"Requête locale non embarquée bloquée : {name}","error.model_not_loaded":"Le modèle n'est pas encore chargé.","error.model_or_reference_missing":"Modèle non chargé ou visage de référence manquant","error.image_unreadable":"L'image n'a pas pu être lue","error.image_unreadable_help":"L'image n'a pas pu être lue. Sélectionnez un fichier image lisible par le navigateur.","error.preview_generation":"L'aperçu de l'image n'a pas pu être généré","error.no_face_detected":"Aucun visage détecté","error.unexpected":"Erreur inattendue : {message}","summary.counts":"{done} sur {total} traités, {scored} notés, {errors} en erreur.","csv.filename":"nom_fichier","csv.status":"statut","csv.face_count":"nombre_visages","csv.similarity_percent":"similarite_pourcent","csv.interpretation":"interpretation","csv.cosine_similarity":"similarite_cosinus","csv.euclidean_distance":"distance_euclidienne","csv.best_face_index":"index_meilleur_visage","csv.detector_score":"score_detecteur","csv.yaw_ratio":"ratio_lacet","csv.pitch_ratio":"ratio_tangage","csv.roll_degrees":"roulis_degres","csv.blur_variance":"variance_flou","csv.quality_issues":"problemes_qualite","csv.error":"erreur","csv.filename_prefix":"facetrace-resultats"}};
+window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","sponsor.aria":"Sponsor FaceTrace on GitHub","sponsor.label":"Sponsor on GitHub","brand.title":"FaceTrace Offline","brand.subtitle":"Local face similarity comparison for selected images.","privacy.pill":"All processing happens locally in your browser. No data leaves your device.","language.label":"Language","language.option.en":"English","language.option.de":"Deutsch","language.option.fr":"Français","a11y.skip_to_content":"Skip to main content","notice.aria":"Privacy and limitations","notice.title":"Probabilistic visual comparison, not identity verification.","notice.body":"Results are not suitable for legal, forensic, employment, access-control, or definitive identity decisions. Treat the percentage as a local similarity signal only.","notice.method.summary":"Percentage method","notice.method.body":"The app aligns each detected face, extracts a 256-number ArcFace descriptor, and compares descriptors with cosine similarity. The percentage uses <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, so cosine 0.32 maps to 50%. Raw cosine similarity and Euclidean distance appear only in technical details.","session.controls.aria":"Session controls","model.loading.initial":"Loading local face models...","button.clear":"Clear session","button.export":"Export CSV","button.import_set":"Import set","button.export_set":"Export set","button.close":"Close","button.info":"Info","button.attribution_info":"Source and license information","progress.idle":"Idle","reference.title":"Reference face","button.choose_image":"Choose image","reference.dropzone.aria":"Select or drop one reference image","reference.dropzone.title":"Drop one reference image","reference.dropzone.hint":"JPEG, PNG, WebP, AVIF, BMP, or another browser-readable image.","reference.empty":"No reference image selected.","reference.help":"Select a clear image with one visible face. If several faces are detected, choose the reference face below.","candidate.title":"Candidate images","button.add_images":"Add images","candidate.dropzone.aria":"Select or drop one or more comparison images","candidate.dropzone.title":"Drop one or many comparison images","candidate.dropzone.hint":"Each detected face is compared locally against the selected reference face.","candidate.help.initial":"Add a reference face first or add candidate images now; queued images will process once the reference is ready.","results.title":"Results","results.empty":"No candidate images selected.","results.sort.aria":"Sort results","results.sort.similarity_desc":"Highest percentage first","results.sort.similarity_asc":"Lowest percentage first","results.sort.name_asc":"Filename A to Z","results.sort.status":"Detection status","results.list.empty":"Results will appear here after a reference and candidate image are processed.","footer.disclaimer":"Local browser execution only. No localhost server, uploads, telemetry, external calls, cloud APIs, or remote model downloads are used by this application.","status.model.decoding":"Decoding local model bundle...","status.model.select_backend":"Selecting TensorFlow.js backend...","status.model.loading_detector":"Loading detector + landmarks ({backend})...","status.model.loading_arcface":"Loading ArcFace recognizer ({backend})...","status.model.ready":"Local face models ready ({backend}). Offline mode is active.","status.model.error":"Model not loaded: {message}","status.model.unavailable_hint":"Model not loaded. Confirm you are opening the generated self-contained index.html.","progress.reference.processing":"Processing reference image...","progress.candidates.processing":"Processing candidate images...","progress.none_queued":"No queued images.","progress.candidate.processing":"Processing {fileName}...","progress.candidates.done":"{completed} of {total} candidate image(s) processed.","progress.searchset.exporting":"Preparing encrypted search set...","progress.searchset.importing":"Importing search set...","message.reference.processing":"Detecting faces and extracting the local descriptor...","message.reference.ready":"Reference face ready. Candidate images will be sorted by similarity percentage.","message.reference.multiple":"Multiple faces detected ({count}). The selected face below is used as the reference.","message.reference.faces_label":"Detected reference faces","message.files.none_image":"No browser-readable image files were selected.","message.files.queued_only":"{count} image(s) queued for local processing.","message.files.queued_mixed":"{accepted} image(s) queued. {rejected} non-image file(s) ignored.","message.candidates.queue_wait_reference":"{count} candidate image(s) queued. Select a reference face to start comparison.","message.candidates.loading_models":"Local models are loading. Candidate images can be queued now.","message.candidates.model_unavailable":"Model not loaded. Candidate images cannot be processed until the local model bundle is available.","message.candidates.processed":"{count} candidate image(s) processed locally.","message.searchset.none_exportable":"Process at least one candidate image with a detected face before exporting a search set.","message.searchset.exported":"Encrypted search set exported with {items} item(s) and {faces} face descriptor(s).","message.searchset.imported":"Imported search set with {items} item(s) and {faces} face descriptor(s).","message.searchset.import_no_reference":"Imported search set with {items} item(s). Add a reference image to start matching.","message.searchset.export_canceled":"Export canceled.","message.searchset.import_canceled":"Import canceled.","message.reference.no_face_queue_paused":"No face was detected in the reference image. Add another reference to score the {count} queued candidate(s).","candidate.state.processing":"Processing","candidate.state.queued":"Queued","candidate.state.waiting_reference":"Waiting for reference","candidate.state.pending":"Pending","candidate.state.awaiting_processing":"Awaiting local processing","candidate.state.model_not_loaded":"Model not loaded","candidate.state.no_score":"No score","candidate.state.no_similarity_score":"No similarity score","candidate.state.no_preview":"No preview","candidate.state.no_face":"No face","candidate.state.face_detected":"Face detected","candidate.state.multiple_faces":"Multiple faces detected ({count}); closest face compared","label.image":"Image","label.best_face":"Best face","label.face":"Face","label.face_with_index":"Face {index}","label.reference_face_with_index":"Reference face {index}","label.detected_candidate_face_with_index":"Detected candidate face {index}","label.face_count":"{count} face(s)","label.quality":"quality: {issues}","label.display_name":"Real name","alt.reference_image_preview":"Reference image preview","alt.candidate_image_preview":"Candidate image preview","alt.best_detected_face_preview":"Best detected face preview","attribution.title":"Source and License","detail.summary":"Technical details","detail.filename":"Filename","detail.display_name":"Real name","detail.source_url":"Source URL","detail.author":"Author","detail.license":"License","detail.source_link":"Source link","detail.attribution_notes":"Notes","detail.detection_status":"Detection status","detail.detected_faces":"Detected faces","detail.image_size":"Image size used","detail.similarity":"Similarity","detail.cosine":"Cosine similarity","detail.euclidean":"Euclidean distance","detail.detector_score":"Detector score","detail.yaw_ratio":"Yaw ratio","detail.pitch_ratio":"Pitch ratio","detail.roll":"Roll (deg)","detail.sharpness":"Sharpness (Lap. var)","detail.error":"Error","detail.similarity_value":"{percent}% ({interpretation})","detail.cosine_short":"cos={value}","similarity.very_high":"very similar","similarity.high":"similar","similarity.medium":"possibly similar","similarity.low":"low similarity","similarity.very_low":"very low similarity","quality.low_detector":"low detector confidence","quality.off_axis_yaw":"off-axis yaw","quality.off_axis_pitch":"off-axis pitch","quality.low_sharpness":"low sharpness","error.canvas_unavailable":"Canvas 2D context is unavailable","error.bundle_missing":"Local embedded model bundle is missing. This index.html copy may be incomplete.","error.decompression_missing":"This browser lacks DecompressionStream. Use a recent Chromium, Firefox, or Safari.","error.bundle_corrupt":"Embedded model bundle JSON is corrupt.","error.bundle_shape":"Embedded model bundle has an unexpected shape.","error.tf_unavailable":"Embedded TensorFlow.js did not initialize. This index.html copy may be incomplete.","error.faceapi_unavailable":"Embedded face-api did not initialize. This index.html copy may be incomplete.","error.faceapi_tf_unavailable":"Embedded face-api did not expose TensorFlow.js. This index.html copy may be incomplete.","error.network_disabled":"Network requests are disabled in FaceTrace Offline.","error.blocked_local_request":"Blocked non-embedded local request: {name}","error.model_not_loaded":"Model not loaded yet.","error.model_or_reference_missing":"Model not loaded or reference face missing","error.image_unreadable":"Image could not be read","error.image_unreadable_help":"Image could not be read. Select a browser-readable image file.","error.preview_generation":"Image preview could not be generated","error.no_face_detected":"No face detected","error.unexpected":"Unexpected error: {message}","error.crypto_unavailable":"Secure browser crypto is unavailable. Open this file in a modern browser that supports Web Crypto.","error.searchset_asset_unavailable":"Search set preview data is no longer available. Reprocess the candidate images and export again.","error.searchset_invalid":"Search set file is invalid or corrupt.","error.searchset_incompatible":"Search set uses an incompatible FaceTrace model or descriptor format.","error.searchset_unsupported_compression":"Search set compression is not supported by this browser.","error.searchset_key_required":"A share key is required to import this encrypted search set.","error.searchset_key_invalid":"Share key is invalid.","error.searchset_decrypt_failed":"Search set could not be decrypted. Check that the share key matches this file.","error.searchset_too_large":"Search set file is too large to import (max {maxMb} MB).","error.searchset_multi_file":"Import one search set file at a time.","dialog.export.title":"Export encrypted search set","dialog.export.body":"About to encrypt and export {items} item(s) with {faces} face descriptor(s). The file contains biometric data and must be shared with care. A share key will be generated; without it the file cannot be decrypted.","dialog.export.confirm":"Continue","dialog.export.cancel":"Cancel","dialog.share_key.title":"Save your share key","dialog.share_key.body":"This key decrypts the search set you just exported. It is not stored anywhere — once this dialog closes, it is gone. Copy it to a password manager or save it as a key file, and keep it separate from the .facetrace-set file.","dialog.share_key.label":"Share key","dialog.share_key.copy":"Copy key","dialog.share_key.copied":"Copied to clipboard","dialog.share_key.copy_failed":"Couldn't copy automatically — select the key and copy manually.","dialog.share_key.save_file":"Save key file","dialog.share_key.continue":"I saved the key — download set","dialog.share_key.cancel":"Cancel export","dialog.import.title":"Import search set","dialog.import.body":"You currently have {currentItems} candidate(s) loaded. The imported set has {newItems} item(s). Add the imported items to your current list, or replace the current list?","dialog.import.replace":"Replace","dialog.import.merge":"Add to current","dialog.import.cancel":"Cancel","dialog.import_key.title":"Decrypt search set","dialog.import_key.body":"This search set is encrypted. Paste the share key (it starts with ftsk1_).","dialog.import_key.placeholder":"ftsk1_...","dialog.import_key.confirm":"Decrypt","dialog.import_key.cancel":"Cancel","placeholder.display_name":"Optional real name","searchset.unnamed_file":"Imported image","summary.counts":"{done} of {total} processed, {scored} scored, {errors} with errors.","csv.filename":"filename","csv.display_name":"display_name","csv.author":"author","csv.license":"license","csv.source_link":"source_link","csv.status":"status","csv.face_count":"face_count","csv.similarity_percent":"similarity_percent","csv.interpretation":"interpretation","csv.cosine_similarity":"cosine_similarity","csv.euclidean_distance":"euclidean_distance","csv.best_face_index":"best_face_index","csv.detector_score":"detector_score","csv.yaw_ratio":"yaw_ratio","csv.pitch_ratio":"pitch_ratio","csv.roll_degrees":"roll_degrees","csv.blur_variance":"blur_variance","csv.quality_issues":"quality_issues","csv.error":"error","csv.filename_prefix":"facetrace-results"},"de":{"app.title":"FaceTrace Offline","sponsor.aria":"FaceTrace auf GitHub sponsern","sponsor.label":"Auf GitHub sponsern","brand.title":"FaceTrace Offline","brand.subtitle":"Lokaler Gesichtsähnlichkeitsvergleich für ausgewählte Bilder.","privacy.pill":"Die gesamte Verarbeitung erfolgt lokal in Ihrem Browser. Es verlassen keine Daten Ihr Gerät.","language.label":"Sprache","language.option.en":"English","language.option.de":"Deutsch","language.option.fr":"Français","a11y.skip_to_content":"Zum Hauptinhalt springen","notice.aria":"Datenschutz und Einschränkungen","notice.title":"Wahrscheinlichkeitsbasierter visueller Vergleich, keine Identitätsfeststellung.","notice.body":"Die Ergebnisse sind nicht für rechtliche, forensische, beschäftigungsbezogene, zugangskontrollbezogene oder endgültige Identitätsentscheidungen geeignet. Betrachten Sie den Prozentsatz nur als lokales Ähnlichkeitssignal.","notice.method.summary":"Prozentmethode","notice.method.body":"Die App richtet jedes erkannte Gesicht aus, extrahiert einen ArcFace-Deskriptor mit 256 Werten und vergleicht Deskriptoren per Kosinusähnlichkeit. Der Prozentwert nutzt <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, sodass Kosinus 0,32 auf 50% abgebildet wird. Rohe Kosinusähnlichkeit und euklidische Distanz erscheinen nur in den technischen Details.","session.controls.aria":"Sitzungssteuerung","model.loading.initial":"Lokale Gesichtsmodelle werden geladen...","button.clear":"Sitzung löschen","button.export":"CSV exportieren","button.import_set":"Set importieren","button.export_set":"Set exportieren","button.close":"Schließen","button.info":"Info","button.attribution_info":"Quellen- und Lizenzinformationen","progress.idle":"Leerlauf","reference.title":"Referenzgesicht","button.choose_image":"Bild wählen","reference.dropzone.aria":"Ein Referenzbild auswählen oder ablegen","reference.dropzone.title":"Ein Referenzbild hier ablegen","reference.dropzone.hint":"JPEG, PNG, WebP, AVIF, BMP oder ein anderes browserlesbares Bild.","reference.empty":"Kein Referenzbild ausgewählt.","reference.help":"Wählen Sie ein klares Bild mit einem sichtbaren Gesicht. Wenn mehrere Gesichter erkannt werden, wählen Sie unten das Referenzgesicht.","candidate.title":"Vergleichsbilder","button.add_images":"Bilder hinzufügen","candidate.dropzone.aria":"Ein oder mehrere Vergleichsbilder auswählen oder ablegen","candidate.dropzone.title":"Ein oder mehrere Vergleichsbilder hier ablegen","candidate.dropzone.hint":"Jedes erkannte Gesicht wird lokal mit dem ausgewählten Referenzgesicht verglichen.","candidate.help.initial":"Fügen Sie zuerst ein Referenzgesicht hinzu oder fügen Sie jetzt Vergleichsbilder hinzu; wartende Bilder werden verarbeitet, sobald die Referenz bereit ist.","results.title":"Ergebnisse","results.empty":"Keine Vergleichsbilder ausgewählt.","results.sort.aria":"Ergebnisse sortieren","results.sort.similarity_desc":"Höchster Prozentsatz zuerst","results.sort.similarity_asc":"Niedrigster Prozentsatz zuerst","results.sort.name_asc":"Dateiname A bis Z","results.sort.status":"Erkennungsstatus","results.list.empty":"Ergebnisse erscheinen hier, nachdem ein Referenz- und ein Vergleichsbild verarbeitet wurden.","footer.disclaimer":"Nur lokale Browserausführung. Diese Anwendung verwendet keinen localhost-Server, keine Uploads, keine Telemetrie, keine externen Aufrufe, keine Cloud-APIs und keine Remote-Modelldownloads.","status.model.decoding":"Lokales Modellpaket wird dekodiert...","status.model.select_backend":"TensorFlow.js-Backend wird ausgewählt...","status.model.loading_detector":"Detektor + Landmarken werden geladen ({backend})...","status.model.loading_arcface":"ArcFace-Erkenner wird geladen ({backend})...","status.model.ready":"Lokale Gesichtsmodelle bereit ({backend}). Offline-Modus ist aktiv.","status.model.error":"Modell nicht geladen: {message}","status.model.unavailable_hint":"Modell nicht geladen. Stellen Sie sicher, dass Sie die erzeugte, in sich geschlossene index.html geöffnet haben.","progress.reference.processing":"Referenzbild wird verarbeitet...","progress.candidates.processing":"Vergleichsbilder werden verarbeitet...","progress.none_queued":"Keine Bilder in der Warteschlange.","progress.candidate.processing":"{fileName} wird verarbeitet...","progress.candidates.done":"{completed} von {total} Vergleichsbildern verarbeitet.","progress.searchset.exporting":"Verschlüsseltes Such-Set wird vorbereitet...","progress.searchset.importing":"Such-Set wird importiert...","message.reference.processing":"Gesichter werden erkannt und lokaler Deskriptor wird extrahiert...","message.reference.ready":"Referenzgesicht bereit. Vergleichsbilder werden nach Ähnlichkeitsprozentsatz sortiert.","message.reference.multiple":"Mehrere Gesichter erkannt ({count}). Das unten ausgewählte Gesicht wird als Referenz verwendet.","message.reference.faces_label":"Erkannte Referenzgesichter","message.files.none_image":"Es wurden keine browserlesbaren Bilddateien ausgewählt.","message.files.queued_only":"{count} Bilddatei(en) zur lokalen Verarbeitung in die Warteschlange gestellt.","message.files.queued_mixed":"{accepted} Bilddatei(en) in Warteschlange. {rejected} Nicht-Bild-Datei(en) ignoriert.","message.candidates.queue_wait_reference":"{count} Vergleichsbild(er) in Warteschlange. Wählen Sie ein Referenzgesicht, um den Vergleich zu starten.","message.candidates.loading_models":"Lokale Modelle werden geladen. Vergleichsbilder können jetzt in die Warteschlange gestellt werden.","message.candidates.model_unavailable":"Modell nicht geladen. Vergleichsbilder können erst verarbeitet werden, wenn das lokale Modellpaket verfügbar ist.","message.candidates.processed":"{count} Vergleichsbild(er) lokal verarbeitet.","message.searchset.none_exportable":"Verarbeiten Sie mindestens ein Vergleichsbild mit erkanntem Gesicht, bevor Sie ein Such-Set exportieren.","message.searchset.exported":"Verschlüsseltes Such-Set mit {items} Element(en) und {faces} Gesichtsdeskriptor(en) exportiert.","message.searchset.imported":"Such-Set mit {items} Element(en) und {faces} Gesichtsdeskriptor(en) importiert.","message.searchset.import_no_reference":"Such-Set mit {items} Element(en) importiert. Fügen Sie ein Referenzbild hinzu, um den Vergleich zu starten.","message.searchset.export_canceled":"Export abgebrochen.","message.searchset.import_canceled":"Import abgebrochen.","message.reference.no_face_queue_paused":"Im Referenzbild wurde kein Gesicht erkannt. Wählen Sie ein anderes Referenzbild, um die {count} wartenden Vergleichsbilder zu bewerten.","candidate.state.processing":"Wird verarbeitet","candidate.state.queued":"In Warteschlange","candidate.state.waiting_reference":"Wartet auf Referenz","candidate.state.pending":"Ausstehend","candidate.state.awaiting_processing":"Wartet auf lokale Verarbeitung","candidate.state.model_not_loaded":"Modell nicht geladen","candidate.state.no_score":"Kein Wert","candidate.state.no_similarity_score":"Kein Ähnlichkeitswert","candidate.state.no_preview":"Keine Vorschau","candidate.state.no_face":"Kein Gesicht","candidate.state.face_detected":"Gesicht erkannt","candidate.state.multiple_faces":"Mehrere Gesichter erkannt ({count}); nächstliegendes Gesicht verglichen","label.image":"Bild","label.best_face":"Bestes Gesicht","label.face":"Gesicht","label.face_with_index":"Gesicht {index}","label.reference_face_with_index":"Referenzgesicht {index}","label.detected_candidate_face_with_index":"Erkanntes Vergleichsgesicht {index}","label.face_count":"{count} Gesicht(er)","label.quality":"Qualität: {issues}","label.display_name":"Echter Name","alt.reference_image_preview":"Vorschau des Referenzbilds","alt.candidate_image_preview":"Vorschau des Vergleichsbilds","alt.best_detected_face_preview":"Vorschau des bestpassenden erkannten Gesichts","attribution.title":"Quelle und Lizenz","detail.summary":"Technische Details","detail.filename":"Dateiname","detail.display_name":"Echter Name","detail.source_url":"Quell-URL","detail.author":"Autor","detail.license":"Lizenz","detail.source_link":"Quell-Link","detail.attribution_notes":"Hinweise","detail.detection_status":"Erkennungsstatus","detail.detected_faces":"Erkannte Gesichter","detail.image_size":"Verwendete Bildgröße","detail.similarity":"Ähnlichkeit","detail.cosine":"Kosinusähnlichkeit","detail.euclidean":"Euklidische Distanz","detail.detector_score":"Detektor-Score","detail.yaw_ratio":"Yaw-Verhältnis","detail.pitch_ratio":"Pitch-Verhältnis","detail.roll":"Roll (Grad)","detail.sharpness":"Schärfe (Lap.-Var.)","detail.error":"Fehler","detail.similarity_value":"{percent}% ({interpretation})","detail.cosine_short":"cos={value}","similarity.very_high":"sehr ähnlich","similarity.high":"ähnlich","similarity.medium":"möglicherweise ähnlich","similarity.low":"geringe Ähnlichkeit","similarity.very_low":"sehr geringe Ähnlichkeit","quality.low_detector":"niedrige Detektorsicherheit","quality.off_axis_yaw":"abweichender Yaw-Winkel","quality.off_axis_pitch":"abweichender Pitch-Winkel","quality.low_sharpness":"geringe Schärfe","error.canvas_unavailable":"Canvas-2D-Kontext ist nicht verfügbar","error.bundle_missing":"Lokales eingebettetes Modellpaket fehlt. Diese index.html-Kopie könnte unvollständig sein.","error.decompression_missing":"Dieser Browser unterstützt DecompressionStream nicht. Verwende ein aktuelles Chromium, Firefox oder Safari.","error.bundle_corrupt":"JSON des eingebetteten Modellpakets ist beschädigt.","error.bundle_shape":"Eingebettetes Modellpaket hat ein unerwartetes Format.","error.tf_unavailable":"Eingebettetes TensorFlow.js wurde nicht initialisiert. Diese index.html-Kopie könnte unvollständig sein.","error.faceapi_unavailable":"Eingebettetes face-api wurde nicht initialisiert. Diese index.html-Kopie könnte unvollständig sein.","error.faceapi_tf_unavailable":"Eingebettetes face-api hat TensorFlow.js nicht bereitgestellt. Diese index.html-Kopie könnte unvollständig sein.","error.network_disabled":"Netzwerkanfragen sind in FaceTrace Offline deaktiviert.","error.blocked_local_request":"Blockierte nicht eingebettete lokale Anfrage: {name}","error.model_not_loaded":"Modell noch nicht geladen.","error.model_or_reference_missing":"Modell nicht geladen oder Referenzgesicht fehlt","error.image_unreadable":"Bild konnte nicht gelesen werden","error.image_unreadable_help":"Bild konnte nicht gelesen werden. Wählen Sie eine browserlesbare Bilddatei.","error.preview_generation":"Bildvorschau konnte nicht erzeugt werden","error.no_face_detected":"Kein Gesicht erkannt","error.unexpected":"Unerwarteter Fehler: {message}","error.crypto_unavailable":"Sichere Browser-Kryptografie ist nicht verfügbar. Öffnen Sie diese Datei in einem aktuellen Browser mit Web-Crypto-Unterstützung.","error.searchset_asset_unavailable":"Die Such-Set-Vorschaudaten sind nicht mehr verfügbar. Verarbeiten Sie die Vergleichsbilder erneut und exportieren Sie noch einmal.","error.searchset_invalid":"Die Such-Set-Datei ist ungültig oder beschädigt.","error.searchset_incompatible":"Das Such-Set verwendet ein inkompatibles FaceTrace-Modell oder Deskriptorformat.","error.searchset_unsupported_compression":"Die Such-Set-Komprimierung wird von diesem Browser nicht unterstützt.","error.searchset_key_required":"Zum Import dieses verschlüsselten Such-Sets ist ein Freigabeschlüssel erforderlich.","error.searchset_key_invalid":"Der Freigabeschlüssel ist ungültig.","error.searchset_decrypt_failed":"Das Such-Set konnte nicht entschlüsselt werden. Prüfen Sie, ob der Freigabeschlüssel zu dieser Datei passt.","error.searchset_too_large":"Such-Set-Datei ist zu groß für den Import (max. {maxMb} MB).","error.searchset_multi_file":"Bitte importieren Sie nur eine Such-Set-Datei auf einmal.","dialog.export.title":"Verschlüsseltes Such-Set exportieren","dialog.export.body":"{items} Element(e) mit {faces} Gesichtsdeskriptor(en) werden gleich verschlüsselt und exportiert. Die Datei enthält biometrische Daten und sollte mit Bedacht weitergegeben werden. Es wird ein Freigabeschlüssel erstellt; ohne ihn kann die Datei nicht entschlüsselt werden.","dialog.export.confirm":"Weiter","dialog.export.cancel":"Abbrechen","dialog.share_key.title":"Freigabeschlüssel sichern","dialog.share_key.body":"Mit diesem Schlüssel wird das soeben exportierte Such-Set entschlüsselt. Er wird nirgendwo gespeichert — sobald dieser Dialog geschlossen wird, ist er weg. Kopieren Sie ihn in einen Passwortmanager oder speichern Sie ihn als Schlüsseldatei und bewahren Sie ihn getrennt von der .facetrace-set-Datei auf.","dialog.share_key.label":"Freigabeschlüssel","dialog.share_key.copy":"Schlüssel kopieren","dialog.share_key.copied":"In die Zwischenablage kopiert","dialog.share_key.copy_failed":"Automatisches Kopieren nicht möglich — markieren Sie den Schlüssel und kopieren Sie ihn manuell.","dialog.share_key.save_file":"Schlüsseldatei speichern","dialog.share_key.continue":"Schlüssel gesichert — Set herunterladen","dialog.share_key.cancel":"Export abbrechen","dialog.import.title":"Such-Set importieren","dialog.import.body":"Sie haben aktuell {currentItems} Vergleichsbild(er) geladen. Das importierte Set enthält {newItems} Element(e). Sollen die importierten Elemente zur aktuellen Liste hinzugefügt oder die aktuelle Liste ersetzt werden?","dialog.import.replace":"Ersetzen","dialog.import.merge":"Hinzufügen","dialog.import.cancel":"Abbrechen","dialog.import_key.title":"Such-Set entschlüsseln","dialog.import_key.body":"Dieses Such-Set ist verschlüsselt. Fügen Sie den Freigabeschlüssel ein (er beginnt mit ftsk1_).","dialog.import_key.placeholder":"ftsk1_...","dialog.import_key.confirm":"Entschlüsseln","dialog.import_key.cancel":"Abbrechen","placeholder.display_name":"Optionaler echter Name","searchset.unnamed_file":"Importiertes Bild","summary.counts":"{done} von {total} verarbeitet, {scored} bewertet, {errors} mit Fehlern.","csv.filename":"dateiname","csv.display_name":"echter_name","csv.author":"autor","csv.license":"lizenz","csv.source_link":"quell_link","csv.status":"status","csv.face_count":"gesicht_anzahl","csv.similarity_percent":"aehnlichkeit_prozent","csv.interpretation":"interpretation","csv.cosine_similarity":"kosinus_aehnlichkeit","csv.euclidean_distance":"euklidische_distanz","csv.best_face_index":"bestes_gesicht_index","csv.detector_score":"detektor_score","csv.yaw_ratio":"yaw_verhaeltnis","csv.pitch_ratio":"pitch_verhaeltnis","csv.roll_degrees":"roll_grad","csv.blur_variance":"unschaerfe_varianz","csv.quality_issues":"qualitaetsprobleme","csv.error":"fehler","csv.filename_prefix":"facetrace-ergebnisse"},"fr":{"app.title":"FaceTrace Hors Ligne","sponsor.aria":"Sponsoriser FaceTrace sur GitHub","sponsor.label":"Sponsoriser sur GitHub","brand.title":"FaceTrace Hors Ligne","brand.subtitle":"Comparaison locale de similarité faciale pour des images sélectionnées.","privacy.pill":"Tout le traitement se fait localement dans votre navigateur. Aucune donnée ne quitte votre appareil.","language.label":"Langue","language.option.en":"English","language.option.de":"Deutsch","language.option.fr":"Français","a11y.skip_to_content":"Aller au contenu principal","notice.aria":"Confidentialité et limites","notice.title":"Comparaison visuelle probabiliste, pas une vérification d'identité.","notice.body":"Les résultats ne conviennent pas à des décisions juridiques, médico-légales, d'emploi, de contrôle d'accès ou d'identité définitive. Interprétez ce pourcentage uniquement comme un signal local de similarité.","notice.method.summary":"Méthode de pourcentage","notice.method.body":"L'application aligne chaque visage détecté, extrait un descripteur ArcFace de 256 valeurs et compare les descripteurs via la similarité cosinus. Le pourcentage utilise <code>100 / (1 + exp(-12 * (cosine - 0.32)))</code>, ainsi un cosinus de 0,32 correspond à 50%. La similarité cosinus brute et la distance euclidienne n'apparaissent que dans les détails techniques.","session.controls.aria":"Contrôles de session","model.loading.initial":"Chargement des modèles faciaux locaux...","button.clear":"Effacer la session","button.export":"Exporter CSV","button.import_set":"Importer set","button.export_set":"Exporter set","button.close":"Fermer","button.info":"Info","button.attribution_info":"Informations de source et de licence","progress.idle":"Inactif","reference.title":"Visage de référence","button.choose_image":"Choisir une image","reference.dropzone.aria":"Sélectionner ou déposer une image de référence","reference.dropzone.title":"Déposer une image de référence","reference.dropzone.hint":"JPEG, PNG, WebP, AVIF, BMP, ou une autre image lisible par le navigateur.","reference.empty":"Aucune image de référence sélectionnée.","reference.help":"Sélectionnez une image nette avec un visage visible. Si plusieurs visages sont détectés, choisissez le visage de référence ci-dessous.","candidate.title":"Images candidates","button.add_images":"Ajouter des images","candidate.dropzone.aria":"Sélectionner ou déposer une ou plusieurs images de comparaison","candidate.dropzone.title":"Déposer une ou plusieurs images de comparaison","candidate.dropzone.hint":"Chaque visage détecté est comparé localement au visage de référence sélectionné.","candidate.help.initial":"Ajoutez d'abord un visage de référence ou ajoutez maintenant des images candidates ; les images en attente seront traitées dès que la référence sera prête.","results.title":"Résultats","results.empty":"Aucune image candidate sélectionnée.","results.sort.aria":"Trier les résultats","results.sort.similarity_desc":"Pourcentage le plus élevé d'abord","results.sort.similarity_asc":"Pourcentage le plus faible d'abord","results.sort.name_asc":"Nom de fichier A à Z","results.sort.status":"Statut de détection","results.list.empty":"Les résultats s'afficheront ici après traitement d'une image de référence et d'une image candidate.","footer.disclaimer":"Exécution locale dans le navigateur uniquement. Cette application n'utilise ni serveur localhost, ni téléversements, ni télémétrie, ni appels externes, ni API cloud, ni téléchargements de modèles distants.","status.model.decoding":"Décodage du package local de modèles...","status.model.select_backend":"Sélection du backend TensorFlow.js...","status.model.loading_detector":"Chargement du détecteur + repères ({backend})...","status.model.loading_arcface":"Chargement du reconnaisseur ArcFace ({backend})...","status.model.ready":"Modèles faciaux locaux prêts ({backend}). Le mode hors ligne est actif.","status.model.error":"Modèle non chargé : {message}","status.model.unavailable_hint":"Modèle non chargé. Vérifiez que vous ouvrez bien le fichier index.html généré et autonome.","progress.reference.processing":"Traitement de l'image de référence...","progress.candidates.processing":"Traitement des images candidates...","progress.none_queued":"Aucune image en file d'attente.","progress.candidate.processing":"Traitement de {fileName}...","progress.candidates.done":"{completed} sur {total} image(s) candidate(s) traitée(s).","progress.searchset.exporting":"Préparation du set de recherche chiffré...","progress.searchset.importing":"Import du set de recherche...","message.reference.processing":"Détection des visages et extraction du descripteur local...","message.reference.ready":"Visage de référence prêt. Les images candidates seront triées par pourcentage de similarité.","message.reference.multiple":"Plusieurs visages détectés ({count}). Le visage sélectionné ci-dessous est utilisé comme référence.","message.reference.faces_label":"Visages de référence détectés","message.files.none_image":"Aucun fichier image lisible par le navigateur n'a été sélectionné.","message.files.queued_only":"{count} image(s) mise(s) en attente pour traitement local.","message.files.queued_mixed":"{accepted} image(s) en attente. {rejected} fichier(s) non image ignoré(s).","message.candidates.queue_wait_reference":"{count} image(s) candidate(s) en attente. Sélectionnez un visage de référence pour démarrer la comparaison.","message.candidates.loading_models":"Les modèles locaux sont en cours de chargement. Les images candidates peuvent déjà être mises en attente.","message.candidates.model_unavailable":"Modèle non chargé. Les images candidates ne peuvent pas être traitées tant que le bundle de modèles local n'est pas disponible.","message.candidates.processed":"{count} image(s) candidate(s) traitée(s) localement.","message.searchset.none_exportable":"Traitez au moins une image candidate avec un visage détecté avant d'exporter un set de recherche.","message.searchset.exported":"Set de recherche chiffré exporté avec {items} élément(s) et {faces} descripteur(s) de visage.","message.searchset.imported":"Set de recherche importé avec {items} élément(s) et {faces} descripteur(s) de visage.","message.searchset.import_no_reference":"Set de recherche importé avec {items} élément(s). Ajoutez une image de référence pour démarrer la comparaison.","message.searchset.export_canceled":"Export annulé.","message.searchset.import_canceled":"Import annulé.","message.reference.no_face_queue_paused":"Aucun visage détecté dans l'image de référence. Choisissez une autre référence pour évaluer les {count} image(s) candidate(s) en attente.","candidate.state.processing":"Traitement","candidate.state.queued":"En attente","candidate.state.waiting_reference":"En attente de référence","candidate.state.pending":"En attente","candidate.state.awaiting_processing":"En attente de traitement local","candidate.state.model_not_loaded":"Modèle non chargé","candidate.state.no_score":"Aucun score","candidate.state.no_similarity_score":"Aucun score de similarité","candidate.state.no_preview":"Aucun aperçu","candidate.state.no_face":"Aucun visage","candidate.state.face_detected":"Visage détecté","candidate.state.multiple_faces":"Plusieurs visages détectés ({count}) ; visage le plus proche comparé","label.image":"Image","label.best_face":"Meilleur visage","label.face":"Visage","label.face_with_index":"Visage {index}","label.reference_face_with_index":"Visage de référence {index}","label.detected_candidate_face_with_index":"Visage candidat détecté {index}","label.face_count":"{count} visage(s)","label.quality":"qualité : {issues}","label.display_name":"Nom réel","alt.reference_image_preview":"Aperçu de l'image de référence","alt.candidate_image_preview":"Aperçu de l'image candidate","alt.best_detected_face_preview":"Aperçu du meilleur visage détecté","attribution.title":"Source et licence","detail.summary":"Détails techniques","detail.filename":"Nom de fichier","detail.display_name":"Nom réel","detail.source_url":"URL source","detail.author":"Auteur","detail.license":"Licence","detail.source_link":"Lien source","detail.attribution_notes":"Notes","detail.detection_status":"Statut de détection","detail.detected_faces":"Visages détectés","detail.image_size":"Taille d'image utilisée","detail.similarity":"Similarité","detail.cosine":"Similarité cosinus","detail.euclidean":"Distance euclidienne","detail.detector_score":"Score détecteur","detail.yaw_ratio":"Ratio de lacet","detail.pitch_ratio":"Ratio de tangage","detail.roll":"Roulis (deg)","detail.sharpness":"Netteté (Var. Lap.)","detail.error":"Erreur","detail.similarity_value":"{percent}% ({interpretation})","detail.cosine_short":"cos={value}","similarity.very_high":"très similaire","similarity.high":"similaire","similarity.medium":"possiblement similaire","similarity.low":"faible similarité","similarity.very_low":"très faible similarité","quality.low_detector":"faible confiance du détecteur","quality.off_axis_yaw":"lacet hors axe","quality.off_axis_pitch":"tangage hors axe","quality.low_sharpness":"faible netteté","error.canvas_unavailable":"Le contexte Canvas 2D est indisponible","error.bundle_missing":"Le bundle de modèles locaux embarqué est manquant. Cette copie de index.html peut être incomplète.","error.decompression_missing":"Ce navigateur ne prend pas en charge DecompressionStream. Utilisez une version récente de Chromium, Firefox ou Safari.","error.bundle_corrupt":"Le JSON du bundle de modèles embarqué est corrompu.","error.bundle_shape":"Le bundle de modèles embarqué a une structure inattendue.","error.tf_unavailable":"TensorFlow.js embarqué ne s'est pas initialisé. Cette copie de index.html peut être incomplète.","error.faceapi_unavailable":"face-api embarqué ne s'est pas initialisé. Cette copie de index.html peut être incomplète.","error.faceapi_tf_unavailable":"face-api embarqué n'a pas exposé TensorFlow.js. Cette copie de index.html peut être incomplète.","error.network_disabled":"Les requêtes réseau sont désactivées dans FaceTrace Hors Ligne.","error.blocked_local_request":"Requête locale non embarquée bloquée : {name}","error.model_not_loaded":"Le modèle n'est pas encore chargé.","error.model_or_reference_missing":"Modèle non chargé ou visage de référence manquant","error.image_unreadable":"L'image n'a pas pu être lue","error.image_unreadable_help":"L'image n'a pas pu être lue. Sélectionnez un fichier image lisible par le navigateur.","error.preview_generation":"L'aperçu de l'image n'a pas pu être généré","error.no_face_detected":"Aucun visage détecté","error.unexpected":"Erreur inattendue : {message}","error.crypto_unavailable":"La cryptographie sécurisée du navigateur est indisponible. Ouvrez ce fichier dans un navigateur récent compatible Web Crypto.","error.searchset_asset_unavailable":"Les données d'aperçu du set de recherche ne sont plus disponibles. Retraitez les images candidates puis exportez à nouveau.","error.searchset_invalid":"Le fichier de set de recherche est invalide ou corrompu.","error.searchset_incompatible":"Le set de recherche utilise un modèle FaceTrace ou un format de descripteur incompatible.","error.searchset_unsupported_compression":"La compression du set de recherche n'est pas prise en charge par ce navigateur.","error.searchset_key_required":"Une clé de partage est requise pour importer ce set de recherche chiffré.","error.searchset_key_invalid":"La clé de partage est invalide.","error.searchset_decrypt_failed":"Le set de recherche n'a pas pu être déchiffré. Vérifiez que la clé de partage correspond à ce fichier.","error.searchset_too_large":"Le fichier de set de recherche est trop volumineux pour l'import (max {maxMb} Mo).","error.searchset_multi_file":"Importez un seul fichier de set de recherche à la fois.","dialog.export.title":"Exporter le set de recherche chiffré","dialog.export.body":"{items} élément(s) avec {faces} descripteur(s) de visage vont être chiffrés et exportés. Le fichier contient des données biométriques et doit être partagé avec précaution. Une clé de partage sera générée ; sans elle, le fichier ne peut pas être déchiffré.","dialog.export.confirm":"Continuer","dialog.export.cancel":"Annuler","dialog.share_key.title":"Sauvegardez votre clé de partage","dialog.share_key.body":"Cette clé déchiffre le set de recherche que vous venez d'exporter. Elle n'est stockée nulle part — une fois ce dialogue fermé, elle est perdue. Copiez-la dans un gestionnaire de mots de passe ou enregistrez-la comme fichier de clé, et conservez-la séparément du fichier .facetrace-set.","dialog.share_key.label":"Clé de partage","dialog.share_key.copy":"Copier la clé","dialog.share_key.copied":"Copiée dans le presse-papiers","dialog.share_key.copy_failed":"Copie automatique impossible — sélectionnez la clé et copiez-la manuellement.","dialog.share_key.save_file":"Enregistrer le fichier de clé","dialog.share_key.continue":"Clé sauvegardée — télécharger le set","dialog.share_key.cancel":"Annuler l'export","dialog.import.title":"Importer le set de recherche","dialog.import.body":"Vous avez actuellement {currentItems} image(s) candidate(s) chargée(s). Le set importé contient {newItems} élément(s). Ajouter les éléments importés à la liste actuelle ou remplacer la liste actuelle ?","dialog.import.replace":"Remplacer","dialog.import.merge":"Ajouter","dialog.import.cancel":"Annuler","dialog.import_key.title":"Déchiffrer le set de recherche","dialog.import_key.body":"Ce set de recherche est chiffré. Collez la clé de partage (elle commence par ftsk1_).","dialog.import_key.placeholder":"ftsk1_...","dialog.import_key.confirm":"Déchiffrer","dialog.import_key.cancel":"Annuler","placeholder.display_name":"Nom réel optionnel","searchset.unnamed_file":"Image importée","summary.counts":"{done} sur {total} traités, {scored} notés, {errors} en erreur.","csv.filename":"nom_fichier","csv.display_name":"nom_reel","csv.author":"auteur","csv.license":"licence","csv.source_link":"lien_source","csv.status":"statut","csv.face_count":"nombre_visages","csv.similarity_percent":"similarite_pourcent","csv.interpretation":"interpretation","csv.cosine_similarity":"similarite_cosinus","csv.euclidean_distance":"distance_euclidienne","csv.best_face_index":"index_meilleur_visage","csv.detector_score":"score_detecteur","csv.yaw_ratio":"ratio_lacet","csv.pitch_ratio":"ratio_tangage","csv.roll_degrees":"roulis_degres","csv.blur_variance":"variance_flou","csv.quality_issues":"problemes_qualite","csv.error":"erreur","csv.filename_prefix":"facetrace-resultats"}};
   </script>
   <script>
 (() => {
@@ -6087,6 +6410,16 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
   const LOCALE_STORAGE_KEY = "facetrace.locale";
   const DEFAULT_LOCALE = "en";
   const SUPPORTED_LOCALES = ["en", "de", "fr"];
+  const SEARCH_SET_FORMAT = "facetrace-search-set";
+  const SEARCH_SET_ENVELOPE_FORMAT = "facetrace-search-set-envelope";
+  const SEARCH_SET_SCHEMA_VERSION = 1;
+  const SEARCH_SET_ENVELOPE_VERSION = 1;
+  const SEARCH_SET_KEY_PREFIX = "ftsk1_";
+  const AES_GCM_KEY_BYTES = 32;
+  const AES_GCM_IV_BYTES = 12;
+  const AES_GCM_TAG_BITS = 128;
+  const MAX_SEARCH_SET_FILE_BYTES = 512 * 1024 * 1024;
+  const DOWNLOAD_URL_TTL_MS = 60_000;
 
   // Calibration of cosine similarity to a user-facing percentage. The model
   // (SE-MobileFaceNet trained with ArcFace loss on MS1M) typically separates
@@ -6118,6 +6451,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
   let arcfaceModel = null;
   let renderResultsScheduled = false;
   const objectUrls = new Set();
+  const objectUrlBlobs = new Map();
 
   // The bundled face-api UMD ships TensorFlow.js v4 internally and exposes it
   // as faceapi.tf. We use that single engine for face-api detection, ArcFace
@@ -6141,6 +6475,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     referenceFaceIndex: 0,
     candidates: [],
     nextCandidateId: 1,
+    nextImportedSetId: 1,
     sortMode: "similarity-desc"
   };
 
@@ -6163,10 +6498,32 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     candidateInput: document.getElementById("candidateInput"),
     candidateDropzone: document.getElementById("candidateDropzone"),
     candidateMessage: document.getElementById("candidateMessage"),
+    importSetButton: document.getElementById("importSetButton"),
+    exportSetButton: document.getElementById("exportSetButton"),
+    searchSetInput: document.getElementById("searchSetInput"),
     languageSelect: document.getElementById("languageSelect"),
     sortSelect: document.getElementById("sortSelect"),
     summaryCounts: document.getElementById("summaryCounts"),
-    resultsList: document.getElementById("resultsList")
+    resultsList: document.getElementById("resultsList"),
+    attributionDialog: document.getElementById("attributionDialog"),
+    attributionDialogBody: document.getElementById("attributionDialogBody"),
+    attributionDialogClose: document.getElementById("attributionDialogClose"),
+    confirmDialog: document.getElementById("confirmDialog"),
+    confirmDialogTitle: document.getElementById("confirmDialogTitle"),
+    confirmDialogBody: document.getElementById("confirmDialogBody"),
+    confirmDialogActions: document.getElementById("confirmDialogActions"),
+    shareKeyDialog: document.getElementById("shareKeyDialog"),
+    shareKeyValue: document.getElementById("shareKeyValue"),
+    shareKeyCopyStatus: document.getElementById("shareKeyCopyStatus"),
+    shareKeyCopyButton: document.getElementById("shareKeyCopyButton"),
+    shareKeySaveButton: document.getElementById("shareKeySaveButton"),
+    shareKeyContinueButton: document.getElementById("shareKeyContinueButton"),
+    shareKeyCancelButton: document.getElementById("shareKeyCancelButton"),
+    importKeyDialog: document.getElementById("importKeyDialog"),
+    importKeyInput: document.getElementById("importKeyInput"),
+    importKeyError: document.getElementById("importKeyError"),
+    importKeyConfirmButton: document.getElementById("importKeyConfirmButton"),
+    importKeyCancelButton: document.getElementById("importKeyCancelButton")
   };
 
   // ---------- generic helpers ----------
@@ -6192,6 +6549,13 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
 
   function getInitialLocale() {
     try {
+      const params = new URLSearchParams(window.location.search || "");
+      const fromUrl = params.get("lang") || params.get("locale");
+      if (fromUrl) return resolveLocale(fromUrl);
+    } catch (_error) {
+      // ignore URL parse errors
+    }
+    try {
       const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY);
       if (saved) return resolveLocale(saved);
     } catch (_error) {
@@ -6200,6 +6564,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     return resolveLocale(window.navigator.language || DEFAULT_LOCALE);
   }
 
+  const reportedMissingKeys = new Set();
   function getI18nText(key) {
     const current = state.locales[state.locale] || {};
     if (Object.prototype.hasOwnProperty.call(current, key)) {
@@ -6209,7 +6574,11 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     if (Object.prototype.hasOwnProperty.call(fallback, key)) {
       return fallback[key];
     }
-    return key;
+    if (!reportedMissingKeys.has(key) && window.console && window.console.warn) {
+      reportedMissingKeys.add(key);
+      window.console.warn("[facetrace i18n] missing key:", key);
+    }
+    return `[${key}]`;
   }
 
   function interpolate(text, vars) {
@@ -6239,6 +6608,13 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     }
   }
 
+  function sanitizeI18nHtml(html) {
+    // Allow only bare <code> and </code> tags. Everything else is escaped, so
+    // a malicious or accidental translation cannot inject markup or scripts.
+    const allowedTag = /^<\/?code>$/i;
+    return String(html).replace(/<[^>]*>/g, (match) => allowedTag.test(match) ? match : escapeHtml(match));
+  }
+
   function applyI18nToDom() {
     document.documentElement.lang = state.locale;
     document.title = t("app.title");
@@ -6247,10 +6623,13 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
       node.textContent = t(node.getAttribute("data-i18n"));
     });
     document.querySelectorAll("[data-i18n-html]").forEach((node) => {
-      node.innerHTML = t(node.getAttribute("data-i18n-html"));
+      node.innerHTML = sanitizeI18nHtml(t(node.getAttribute("data-i18n-html")));
     });
     document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
       node.setAttribute("aria-label", t(node.getAttribute("data-i18n-aria-label")));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+      node.setAttribute("placeholder", t(node.getAttribute("data-i18n-placeholder")));
     });
   }
 
@@ -6269,9 +6648,20 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     applyI18nToDom();
     refreshModelStatusText();
     refreshProgressText();
+    retranslatePlaceholderFileNames();
     renderReference();
     renderResults();
     updateCandidateMessage();
+  }
+
+  function retranslatePlaceholderFileNames() {
+    const fallback = t("searchset.unnamed_file");
+    for (const candidate of state.candidates) {
+      if (candidate && candidate.fileNameIsPlaceholder) {
+        candidate.fileName = fallback;
+        if (candidate.result) candidate.result.fileName = fallback;
+      }
+    }
   }
 
   function refreshModelStatusText() {
@@ -6284,6 +6674,83 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
 
   function formatNumber(value, digits = 4) {
     return Number.isFinite(value) ? value.toFixed(digits) : "";
+  }
+
+  function safeFileName(value, fallback) {
+    const cleaned = String(value || fallback || "facetrace")
+      .trim()
+      .replace(/[^a-z0-9._-]+/gi, "-")
+      .replace(/^-+|-+$/g, "");
+    return cleaned || fallback || "facetrace";
+  }
+
+  function exportTimestampSlug() {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+
+  function safeExternalHref(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const url = new URL(raw);
+      return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function textToBytes(text) {
+    return new TextEncoder().encode(String(text));
+  }
+
+  function bytesToText(bytes) {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  }
+
+  function bytesToBase64(bytes) {
+    const chunkSize = 0x8000;
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      const chunk = bytes.subarray(offset, offset + chunkSize);
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    return window.btoa(binary);
+  }
+
+  function base64ToBytes(base64) {
+    const binary = window.atob(String(base64 || ""));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  }
+
+  function bytesToBase64Url(bytes) {
+    return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function base64UrlToBytes(value) {
+    const normalized = String(value || "").trim().replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
+    return base64ToBytes(padded);
+  }
+
+  function stableStringify(value) {
+    if (Array.isArray(value)) {
+      return `[${value.map(stableStringify).join(",")}]`;
+    }
+    if (value && typeof value === "object") {
+      return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+    }
+    return JSON.stringify(value);
+  }
+
+  async function sha256Base64Url(bytes) {
+    const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+    return bytesToBase64Url(new Uint8Array(digest));
   }
 
   function sleep(ms) {
@@ -6321,13 +6788,17 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     return error;
   }
 
-  function registerObjectUrl(url) {
+  function registerObjectUrl(url, blob) {
     objectUrls.add(url);
+    if (blob) {
+      objectUrlBlobs.set(url, blob);
+    }
     return url;
   }
 
   function releaseObjectUrl(url) {
     if (typeof url === "string" && url.startsWith("blob:") && objectUrls.delete(url)) {
+      objectUrlBlobs.delete(url);
       URL.revokeObjectURL(url);
     }
   }
@@ -6347,6 +6818,24 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
       URL.revokeObjectURL(url);
     }
     objectUrls.clear();
+    objectUrlBlobs.clear();
+  }
+
+  function releaseCandidateObjectUrls() {
+    for (const candidate of state.candidates) {
+      releaseAnalysisUrls(candidate.result);
+    }
+  }
+
+  function normalizeAttribution(value) {
+    if (!value || typeof value !== "object") return null;
+    const attribution = {
+      author: String(value.author || "").trim(),
+      license: String(value.license || "").trim(),
+      sourceLink: String(value.sourceLink || value.sourceUrl || "").trim(),
+      notes: String(value.notes || "").trim()
+    };
+    return attribution.author || attribution.license || attribution.sourceLink || attribution.notes ? attribution : null;
   }
 
   function isLikelyImage(file) {
@@ -6801,6 +7290,214 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     return issues;
   }
 
+  // ---------- modal dialog helpers ----------
+
+  function openDialog(dialog) {
+    if (typeof dialog.showModal === "function" && !dialog.open) {
+      dialog.showModal();
+    } else if (!dialog.open) {
+      dialog.setAttribute("open", "");
+    }
+  }
+
+  function closeDialog(dialog) {
+    if (!dialog.open) return;
+    if (typeof dialog.close === "function") {
+      dialog.close();
+    } else {
+      dialog.removeAttribute("open");
+    }
+  }
+
+  function showConfirmDialog(options) {
+    const dialog = elements.confirmDialog;
+    elements.confirmDialogTitle.textContent = options.title || "";
+    elements.confirmDialogBody.textContent = options.body || "";
+    elements.confirmDialogActions.innerHTML = "";
+
+    const opener = document.activeElement;
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      const buttons = [];
+
+      const finish = (value) => {
+        if (resolved) return;
+        resolved = true;
+        dialog.removeEventListener("close", onClose);
+        for (const button of buttons) {
+          button.element.removeEventListener("click", button.handler);
+        }
+        closeDialog(dialog);
+        if (opener && typeof opener.focus === "function") {
+          try { opener.focus(); } catch (_) {}
+        }
+        resolve(value);
+      };
+
+      const onClose = () => finish(null);
+      dialog.addEventListener("close", onClose);
+
+      (options.buttons || []).forEach((spec) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `button${spec.kind ? ` ${spec.kind}` : ""}`;
+        button.textContent = spec.label;
+        const handler = () => finish(spec.value);
+        button.addEventListener("click", handler);
+        elements.confirmDialogActions.appendChild(button);
+        buttons.push({ element: button, handler });
+      });
+
+      openDialog(dialog);
+
+      const focusTarget = elements.confirmDialogActions.querySelector("button.primary")
+        || elements.confirmDialogActions.querySelector("button:not(.cancel)")
+        || elements.confirmDialogActions.querySelector("button");
+      if (focusTarget) {
+        try { focusTarget.focus(); } catch (_) {}
+      }
+    });
+  }
+
+  function showShareKeyDialog(shareKey) {
+    const dialog = elements.shareKeyDialog;
+    elements.shareKeyValue.value = shareKey;
+    elements.shareKeyCopyStatus.textContent = "";
+    elements.shareKeyCopyStatus.classList.remove("error");
+
+    const opener = document.activeElement;
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      const finish = (value) => {
+        if (resolved) return;
+        resolved = true;
+        elements.shareKeyCopyButton.removeEventListener("click", onCopy);
+        elements.shareKeySaveButton.removeEventListener("click", onSave);
+        elements.shareKeyContinueButton.removeEventListener("click", onContinue);
+        elements.shareKeyCancelButton.removeEventListener("click", onCancel);
+        dialog.removeEventListener("close", onClose);
+        elements.shareKeyValue.value = "";
+        closeDialog(dialog);
+        if (opener && typeof opener.focus === "function") {
+          try { opener.focus(); } catch (_) {}
+        }
+        resolve(value);
+      };
+
+      async function onCopy() {
+        elements.shareKeyCopyStatus.classList.remove("error");
+        try {
+          if (window.navigator && window.navigator.clipboard && window.navigator.clipboard.writeText) {
+            await window.navigator.clipboard.writeText(shareKey);
+            elements.shareKeyCopyStatus.textContent = t("dialog.share_key.copied");
+            return;
+          }
+          throw new Error("clipboard unavailable");
+        } catch (_error) {
+          elements.shareKeyCopyStatus.classList.add("error");
+          elements.shareKeyCopyStatus.textContent = t("dialog.share_key.copy_failed");
+          try {
+            elements.shareKeyValue.focus();
+            elements.shareKeyValue.select();
+          } catch (_) {}
+        }
+      }
+
+      function onSave() {
+        const blob = new Blob([shareKey + "\n"], { type: "text/plain;charset=utf-8" });
+        downloadBlob(blob, `facetrace-share-key-${exportTimestampSlug()}.txt`);
+      }
+
+      const onContinue = () => finish(true);
+      const onCancel = () => finish(false);
+      const onClose = () => finish(false);
+
+      elements.shareKeyCopyButton.addEventListener("click", onCopy);
+      elements.shareKeySaveButton.addEventListener("click", onSave);
+      elements.shareKeyContinueButton.addEventListener("click", onContinue);
+      elements.shareKeyCancelButton.addEventListener("click", onCancel);
+      dialog.addEventListener("close", onClose);
+
+      openDialog(dialog);
+
+      // Pre-select the key so a user can immediately Cmd/Ctrl+C even before
+      // discovering the Copy button.
+      try {
+        elements.shareKeyValue.focus();
+        elements.shareKeyValue.select();
+      } catch (_) {}
+    });
+  }
+
+  function promptForShareKey() {
+    const dialog = elements.importKeyDialog;
+    elements.importKeyInput.value = "";
+    elements.importKeyError.textContent = "";
+
+    const opener = document.activeElement;
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      const finish = (value) => {
+        if (resolved) return;
+        resolved = true;
+        elements.importKeyConfirmButton.removeEventListener("click", onConfirm);
+        elements.importKeyCancelButton.removeEventListener("click", onCancel);
+        elements.importKeyInput.removeEventListener("keydown", onKeydown);
+        dialog.removeEventListener("close", onClose);
+        elements.importKeyInput.value = "";
+        closeDialog(dialog);
+        if (opener && typeof opener.focus === "function") {
+          try { opener.focus(); } catch (_) {}
+        }
+        resolve(value);
+      };
+
+      const onConfirm = () => {
+        const raw = elements.importKeyInput.value.trim();
+        if (!raw) {
+          elements.importKeyError.textContent = t("error.searchset_key_required");
+          elements.importKeyInput.focus();
+          return;
+        }
+        const encoded = raw.startsWith(SEARCH_SET_KEY_PREFIX) ? raw.slice(SEARCH_SET_KEY_PREFIX.length) : raw;
+        try {
+          const keyBytes = base64UrlToBytes(encoded);
+          if (!keyBytes || keyBytes.length !== AES_GCM_KEY_BYTES) {
+            throw new Error("invalid key length");
+          }
+        } catch (_error) {
+          elements.importKeyError.textContent = t("error.searchset_key_invalid");
+          elements.importKeyInput.focus();
+          elements.importKeyInput.select();
+          return;
+        }
+        finish(raw);
+      };
+      const onCancel = () => finish(null);
+      const onClose = () => finish(null);
+      const onKeydown = (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          onConfirm();
+        }
+      };
+
+      elements.importKeyConfirmButton.addEventListener("click", onConfirm);
+      elements.importKeyCancelButton.addEventListener("click", onCancel);
+      elements.importKeyInput.addEventListener("keydown", onKeydown);
+      dialog.addEventListener("close", onClose);
+
+      openDialog(dialog);
+
+      try { elements.importKeyInput.focus(); } catch (_) {}
+    });
+  }
+
   // ---------- input bindings ----------
 
   function bindDropzone(dropzone, input, onFiles) {
@@ -6838,6 +7535,11 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
   elements.candidatePickButton.addEventListener("click", () => elements.candidateInput.click());
   bindDropzone(elements.referenceDropzone, elements.referenceInput, handleReferenceFiles);
   bindDropzone(elements.candidateDropzone, elements.candidateInput, handleCandidateFiles);
+  elements.importSetButton.addEventListener("click", () => elements.searchSetInput.click());
+  elements.searchSetInput.addEventListener("change", () => {
+    handleSearchSetFiles(Array.from(elements.searchSetInput.files || []));
+    elements.searchSetInput.value = "";
+  });
 
   elements.clearButton.addEventListener("click", () => {
     state.runToken += 1;
@@ -6847,6 +7549,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     state.referenceFaceIndex = 0;
     state.candidates = [];
     state.nextCandidateId = 1;
+    state.nextImportedSetId = 1;
     hideProgress();
     renderReference();
     renderResults();
@@ -6854,6 +7557,29 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
   });
 
   elements.exportButton.addEventListener("click", exportCsv);
+  elements.exportSetButton.addEventListener("click", exportSearchSet);
+  elements.resultsList.addEventListener("input", (event) => {
+    const input = event.target && event.target.closest ? event.target.closest("[data-candidate-display-name]") : null;
+    if (!input) return;
+    const candidate = state.candidates.find((item) => String(item.id) === input.getAttribute("data-candidate-display-name"));
+    if (!candidate) return;
+    candidate.displayName = input.value;
+    if (candidate.result) {
+      candidate.result.displayName = input.value;
+    }
+  });
+  elements.resultsList.addEventListener("click", (event) => {
+    const button = event.target && event.target.closest ? event.target.closest("[data-candidate-attribution]") : null;
+    if (!button) return;
+    openAttributionDialog(button.getAttribute("data-candidate-attribution"));
+  });
+  elements.attributionDialogClose.addEventListener("click", () => {
+    if (elements.attributionDialog.close) {
+      elements.attributionDialog.close();
+    } else {
+      elements.attributionDialog.removeAttribute("open");
+    }
+  });
   elements.sortSelect.addEventListener("change", () => {
     state.sortMode = elements.sortSelect.value;
     renderResults();
@@ -6898,6 +7624,8 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
         rescoreAllCandidates();
         await processCandidateQueue();
       }
+      // No-face path is handled by updateCandidateMessage() in the finally
+      // block, which surfaces a "no face — queue paused" hint when needed.
     } catch (error) {
       if (token !== state.runToken) return;
       state.reference = {
@@ -6933,6 +7661,9 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
         id: state.nextCandidateId++,
         file,
         fileName: file.name,
+        displayName: "",
+        sourceUrl: "",
+        attribution: null,
         status: "queued",
         result: null,
         error: null
@@ -7006,6 +7737,9 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
           cancelled = true;
           break;
         }
+        analysis.displayName = candidate.displayName || "";
+        analysis.sourceUrl = candidate.sourceUrl || "";
+        analysis.attribution = normalizeAttribution(candidate.attribution);
         candidate.result = scoreCandidateAnalysis(analysis);
         candidate.status = "done";
         candidate.error = null;
@@ -7235,7 +7969,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     context.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
     try {
       const blob = await canvasToBlob(canvas, "image/jpeg", quality);
-      return registerObjectUrl(URL.createObjectURL(blob));
+      return registerObjectUrl(URL.createObjectURL(blob), blob);
     } finally {
       canvas.width = 0;
       canvas.height = 0;
@@ -7263,7 +7997,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     context.drawImage(sourceCanvas, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, size, size);
     try {
       const blob = await canvasToBlob(canvas, "image/jpeg", 0.86);
-      return registerObjectUrl(URL.createObjectURL(blob));
+      return registerObjectUrl(URL.createObjectURL(blob), blob);
     } finally {
       canvas.width = 0;
       canvas.height = 0;
@@ -7291,6 +8025,103 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     } catch (error) {
       return Promise.reject(error);
     }
+  }
+
+  async function objectUrlToAsset(url) {
+    if (!url) return null;
+    if (!window.crypto || !window.crypto.subtle) {
+      throw makeI18nError("error.crypto_unavailable");
+    }
+    const blob = objectUrlBlobs.get(url);
+    if (!blob) {
+      throw makeI18nError("error.searchset_asset_unavailable");
+    }
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return {
+      mediaType: blob.type || "application/octet-stream",
+      encoding: "base64",
+      byteLength: bytes.length,
+      sha256: await sha256Base64Url(bytes),
+      data: bytesToBase64(bytes)
+    };
+  }
+
+  function assetToObjectUrl(asset) {
+    if (!asset) return "";
+    if (asset.encoding !== "base64" || typeof asset.data !== "string") {
+      throw makeI18nError("error.searchset_invalid");
+    }
+    const bytes = base64ToBytes(asset.data);
+    const blob = new Blob([bytes], { type: asset.mediaType || "application/octet-stream" });
+    return registerObjectUrl(URL.createObjectURL(blob), blob);
+  }
+
+  function encodeDescriptor(descriptor) {
+    if (!descriptor || descriptor.length !== ARCFACE_EMBEDDING_DIM) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+    const buffer = new ArrayBuffer(ARCFACE_EMBEDDING_DIM * 4);
+    const view = new DataView(buffer);
+    for (let index = 0; index < ARCFACE_EMBEDDING_DIM; index += 1) {
+      view.setFloat32(index * 4, Number(descriptor[index]) || 0, true);
+    }
+    return {
+      dimensions: ARCFACE_EMBEDDING_DIM,
+      encoding: "float32-le-base64",
+      data: bytesToBase64(new Uint8Array(buffer))
+    };
+  }
+
+  function decodeDescriptor(encoded) {
+    if (!encoded || encoded.encoding !== "float32-le-base64" || encoded.dimensions !== ARCFACE_EMBEDDING_DIM) {
+      throw makeI18nError("error.searchset_incompatible");
+    }
+    const bytes = base64ToBytes(encoded.data);
+    if (bytes.byteLength !== ARCFACE_EMBEDDING_DIM * 4) {
+      throw makeI18nError("error.searchset_incompatible");
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const descriptor = new Float32Array(ARCFACE_EMBEDDING_DIM);
+    for (let index = 0; index < ARCFACE_EMBEDDING_DIM; index += 1) {
+      descriptor[index] = view.getFloat32(index * 4, true);
+    }
+    return descriptor;
+  }
+
+  async function compressPayload(bytes) {
+    if (typeof CompressionStream !== "function") {
+      return { compression: "none", bytes };
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+    return {
+      compression: "gzip",
+      bytes: new Uint8Array(await new Response(stream).arrayBuffer())
+    };
+  }
+
+  async function decompressPayload(bytes, compression) {
+    if (!compression || compression === "none") {
+      return bytes;
+    }
+    if (compression !== "gzip" || typeof DecompressionStream !== "function") {
+      throw makeI18nError("error.searchset_unsupported_compression");
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  function downloadBlob(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Keep the URL alive long enough that even slow browsers / "Save As"
+    // dialogs / sandboxed file pickers can resolve the download before the
+    // blob is revoked. 250ms used to truncate downloads on slow devices.
+    window.setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_TTL_MS);
   }
 
   function chooseDefaultReferenceFace(faces) {
@@ -7550,6 +8381,7 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
 
   function renderResults() {
     elements.exportButton.disabled = !state.candidates.some((candidate) => candidate.result);
+    elements.exportSetButton.disabled = !state.candidates.some((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.length);
 
     if (!state.candidates.length) {
       elements.summaryCounts.textContent = t("results.empty");
@@ -7608,6 +8440,10 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
           <div class="face-thumb"><div class="empty-state">${escapeHtml(t("label.face"))}</div></div>
           <div class="result-main">
             <div class="filename" title="${escapeHtml(candidate.fileName)}">${escapeHtml(candidate.fileName)}</div>
+            <label class="name-field">
+              <span class="sr-only">${escapeHtml(t("label.display_name"))}</span>
+              <input class="name-input" type="text" value="${escapeHtml(candidate.displayName || "")}" placeholder="${escapeHtml(t("placeholder.display_name"))}" data-candidate-display-name="${candidate.id}">
+            </label>
             <div class="status-row"><span class="badge">${status}</span></div>
           </div>
           <div class="score-block">
@@ -7636,6 +8472,10 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     const qualityIssues = best && best.qualityIssues && best.qualityIssues.length
       ? `<span class="badge warn">${escapeHtml(t("label.quality", { issues: qualityListLabel(best.qualityIssues) }))}</span>`
       : "";
+    const attribution = normalizeAttribution(result.attribution || candidate.attribution);
+    const attributionButton = attribution
+      ? `<button class="info-button" type="button" data-candidate-attribution="${candidate.id}" title="${escapeHtml(t("button.attribution_info"))}" aria-label="${escapeHtml(t("button.attribution_info"))}">${escapeHtml(t("button.info"))}</button>`
+      : "";
 
     return `
       <article class="result-card">
@@ -7649,10 +8489,15 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
         </div>
         <div class="result-main">
           <div class="filename" title="${escapeHtml(candidate.fileName)}">${escapeHtml(candidate.fileName)}</div>
+          <label class="name-field">
+            <span class="sr-only">${escapeHtml(t("label.display_name"))}</span>
+            <input class="name-input" type="text" value="${escapeHtml(candidate.displayName || result.displayName || "")}" placeholder="${escapeHtml(t("placeholder.display_name"))}" data-candidate-display-name="${candidate.id}">
+          </label>
           <div class="status-row">
             <span class="badge ${statusKind}">${escapeHtml(t(result.statusKey || "candidate.state.pending", result.statusVars || {}))}</span>
             <span class="badge">${escapeHtml(t("label.face_count", { count: result.faceCount || 0 }))}</span>
             ${qualityIssues}
+            ${attributionButton}
           </div>
         </div>
         <div class="score-block">
@@ -7666,12 +8511,26 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
 
   function renderDetails(result) {
     const best = result.best;
+    const attribution = normalizeAttribution(result.attribution);
     const cells = [
       [t("detail.filename"), result.fileName],
+      [t("detail.display_name"), result.displayName || ""],
+      [t("detail.source_url"), result.sourceUrl || ""],
       [t("detail.detection_status"), t(result.statusKey || "candidate.state.pending", result.statusVars || {})],
       [t("detail.detected_faces"), String(result.faceCount || 0)],
       [t("detail.image_size"), result.width && result.height ? `${result.width} x ${result.height}` : ""]
     ];
+
+    if (attribution) {
+      for (const cell of [
+        [t("detail.author"), attribution.author],
+        [t("detail.license"), attribution.license],
+        [t("detail.source_link"), attribution.sourceLink],
+        [t("detail.attribution_notes"), attribution.notes]
+      ]) {
+        if (cell[1]) cells.push(cell);
+      }
+    }
 
     if (best) {
       cells.push(
@@ -7697,7 +8556,9 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
         <div class="candidate-faces">
           ${result.comparisons.map((item) => `
             <div class="candidate-face ${best && item.faceIndex === best.faceIndex ? "best" : ""}">
-              <img src="${item.crop}" alt="${escapeHtml(t("label.detected_candidate_face_with_index", { index: item.faceIndex + 1 }))}">
+              ${item.crop
+                ? `<img src="${item.crop}" alt="${escapeHtml(t("label.detected_candidate_face_with_index", { index: item.faceIndex + 1 }))}">`
+                : `<div class="empty-state">${escapeHtml(t("candidate.state.no_preview"))}</div>`}
               <strong>${item.similarity}%</strong>
               <span>${escapeHtml(t("label.face_with_index", { index: item.faceIndex + 1 }))}</span>
               <span>${escapeHtml(t("detail.cosine_short", { value: formatNumber(item.cosine, 3) }))}</span>
@@ -7723,6 +8584,50 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     `;
   }
 
+  function openAttributionDialog(candidateId) {
+    const candidate = state.candidates.find((item) => String(item.id) === String(candidateId));
+    if (!candidate || !candidate.result) return;
+    const attribution = normalizeAttribution(candidate.result.attribution || candidate.attribution);
+    if (!attribution) return;
+
+    const sourceHref = safeExternalHref(attribution.sourceLink);
+    const rows = [
+      { label: t("detail.filename"), value: candidate.fileName },
+      { label: t("detail.display_name"), value: candidate.displayName || candidate.result.displayName || "" },
+      { label: t("detail.author"), value: attribution.author },
+      { label: t("detail.license"), value: attribution.license },
+      { label: t("detail.source_link"), value: attribution.sourceLink, href: sourceHref },
+      { label: t("detail.attribution_notes"), value: attribution.notes }
+    ].filter((row) => row.value);
+
+    elements.attributionDialogBody.innerHTML = `
+      <div class="attribution-grid">
+        ${rows.map((row) => `
+          <div class="attribution-row">
+            <b>${escapeHtml(row.label)}</b>
+            <span>${row.href
+              ? `<a href="${escapeHtml(row.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(row.value)}</a>`
+              : escapeHtml(row.value)}
+            </span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    const opener = document.activeElement;
+    elements.attributionDialog.addEventListener("close", () => {
+      if (opener && typeof opener.focus === "function") {
+        try { opener.focus(); } catch (_) {}
+      }
+    }, { once: true });
+
+    if (typeof elements.attributionDialog.showModal === "function") {
+      elements.attributionDialog.showModal();
+    } else {
+      elements.attributionDialog.setAttribute("open", "");
+    }
+  }
+
   function updateCandidateMessage() {
     if (!state.modelsReady) {
       elements.candidateMessage.className = state.modelError ? "message error" : "message";
@@ -7733,6 +8638,23 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
     }
 
     if (!hasUsableReference()) {
+      const reference = state.reference;
+      const referenceLoadedButNoFace = reference
+        && reference.status !== "processing"
+        && (!reference.faces || reference.faces.length === 0);
+      const waitingCount = state.candidates.filter((candidate) => {
+        if (candidate.status === "queued") return true;
+        return candidate.result
+          && !candidate.result.best
+          && candidate.result.statusKey === "candidate.state.waiting_reference";
+      }).length;
+
+      if (referenceLoadedButNoFace && waitingCount > 0) {
+        elements.candidateMessage.className = "message warn";
+        elements.candidateMessage.textContent = t("message.reference.no_face_queue_paused", { count: waitingCount });
+        return;
+      }
+
       elements.candidateMessage.className = "message";
       elements.candidateMessage.textContent = state.candidates.length
         ? t("message.candidates.queue_wait_reference", { count: state.candidates.length })
@@ -7748,11 +8670,451 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
       : t("message.candidates.processed", { count: processed });
   }
 
+  // ---------- search set import/export ----------
+
+  function searchSetPipelineMetadata() {
+    return {
+      id: "facetrace-arcface-256-v1",
+      embeddingDim: ARCFACE_EMBEDDING_DIM,
+      descriptorEncoding: "float32-le-base64",
+      detector: "face-api tiny_face_detector_model",
+      landmarks: "face-api face_landmark_68_model",
+      recognizer: "SE-MobileFaceNet ArcFace TF.js GraphModel",
+      alignment: "insightface-5point-112",
+      tta: "horizontal-flip-average-l2",
+      maxAnalysisSide: MAX_ANALYSIS_SIDE,
+      thumbnailSide: THUMBNAIL_SIDE,
+      faceCropSide: FACE_CROP_SIDE,
+      similarity: {
+        metric: "cosine",
+        percentCenter: COSINE_PERCENT_CENTER,
+        percentSlope: COSINE_PERCENT_SLOPE
+      }
+    };
+  }
+
+  async function buildSearchSetPayload(candidates, onProgress) {
+    const items = [];
+    let faceCount = 0;
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      const candidate = candidates[i];
+      const result = candidate.result;
+      const attribution = normalizeAttribution(result.attribution || candidate.attribution);
+      const faces = [];
+      for (const face of result.faces || []) {
+        faces.push({
+          index: face.index,
+          descriptor: encodeDescriptor(face.descriptor),
+          detectorScore: face.score,
+          box: face.box,
+          quality: face.quality,
+          crop: await objectUrlToAsset(face.crop)
+        });
+      }
+      faceCount += faces.length;
+      items.push({
+        id: `item-${items.length + 1}`,
+        fileName: candidate.fileNameIsPlaceholder ? "" : (candidate.fileName || result.fileName || ""),
+        displayName: candidate.displayName || result.displayName || "",
+        sourceUrl: result.sourceUrl || candidate.sourceUrl || "",
+        attribution: attribution || undefined,
+        fileSize: result.fileSize || null,
+        fileType: result.fileType || "unknown",
+        width: result.width || 0,
+        height: result.height || 0,
+        status: faces.length ? "ok" : "no-face",
+        thumbnail: await objectUrlToAsset(result.thumbnail),
+        faces
+      });
+      if (typeof onProgress === "function") {
+        onProgress(i + 1, candidates.length);
+      }
+      // Yield between items so the progress bar paints and the user can still
+      // interact with the page on a large export.
+      await yieldToBrowser();
+    }
+
+    return {
+      format: SEARCH_SET_FORMAT,
+      schemaVersion: SEARCH_SET_SCHEMA_VERSION,
+      createdAt: new Date().toISOString(),
+      producer: {
+        name: "FaceTrace Offline",
+        runtime: "browser"
+      },
+      model: searchSetPipelineMetadata(),
+      counts: {
+        items: items.length,
+        faces: faceCount
+      },
+      privacy: {
+        containsBiometricDescriptors: true,
+        containsFullOriginalImages: false,
+        containsPreviewImages: true
+      },
+      items
+    };
+  }
+
+  async function encryptedEnvelopeForPayload(payload) {
+    if (!window.crypto || !window.crypto.subtle || typeof window.crypto.getRandomValues !== "function") {
+      throw makeI18nError("error.crypto_unavailable");
+    }
+
+    const payloadBytes = textToBytes(JSON.stringify(payload));
+    const compressed = await compressPayload(payloadBytes);
+    const keyBytes = window.crypto.getRandomValues(new Uint8Array(AES_GCM_KEY_BYTES));
+    const iv = window.crypto.getRandomValues(new Uint8Array(AES_GCM_IV_BYTES));
+    const key = await window.crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt"]);
+    const header = {
+      format: SEARCH_SET_ENVELOPE_FORMAT,
+      envelopeVersion: SEARCH_SET_ENVELOPE_VERSION,
+      createdAt: new Date().toISOString(),
+      payload: {
+        format: SEARCH_SET_FORMAT,
+        schemaVersion: SEARCH_SET_SCHEMA_VERSION,
+        compression: compressed.compression,
+        byteLength: compressed.bytes.length
+      },
+      encryption: {
+        algorithm: "AES-256-GCM",
+        keyFormat: "ftsk1",
+        iv: bytesToBase64Url(iv),
+        tagLength: AES_GCM_TAG_BITS
+      }
+    };
+    const additionalData = textToBytes(stableStringify(header));
+    const ciphertext = new Uint8Array(await window.crypto.subtle.encrypt({
+      name: "AES-GCM",
+      iv,
+      additionalData,
+      tagLength: AES_GCM_TAG_BITS
+    }, key, compressed.bytes));
+
+    return {
+      shareKey: `${SEARCH_SET_KEY_PREFIX}${bytesToBase64Url(keyBytes)}`,
+      envelope: {
+        format: SEARCH_SET_ENVELOPE_FORMAT,
+        envelopeVersion: SEARCH_SET_ENVELOPE_VERSION,
+        header,
+        ciphertext: bytesToBase64Url(ciphertext)
+      }
+    };
+  }
+
+  async function exportSearchSet() {
+    const exportable = state.candidates.filter((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.length);
+    if (!exportable.length) {
+      elements.candidateMessage.className = "message warn";
+      elements.candidateMessage.textContent = t("message.searchset.none_exportable");
+      return;
+    }
+
+    const itemCount = exportable.length;
+    const faceCount = exportable.reduce((sum, candidate) => sum + (candidate.result.faces ? candidate.result.faces.length : 0), 0);
+
+    const decision = await showConfirmDialog({
+      title: t("dialog.export.title"),
+      body: t("dialog.export.body", { items: itemCount, faces: faceCount }),
+      buttons: [
+        { label: t("dialog.export.cancel"), value: null, kind: "cancel" },
+        { label: t("dialog.export.confirm"), value: "go", kind: "primary" }
+      ]
+    });
+    if (decision !== "go") {
+      elements.candidateMessage.className = "message";
+      elements.candidateMessage.textContent = t("message.searchset.export_canceled");
+      return;
+    }
+
+    elements.exportSetButton.disabled = true;
+    showProgress(0, exportable.length, "progress.searchset.exporting");
+    try {
+      const payload = await buildSearchSetPayload(exportable, (done, total) => {
+        showProgress(done, total, "progress.candidates.done", { completed: done, total });
+      });
+      showProgress(exportable.length, exportable.length, "progress.searchset.exporting");
+      const encrypted = await encryptedEnvelopeForPayload(payload);
+      hideProgress();
+
+      const acknowledged = await showShareKeyDialog(encrypted.shareKey);
+      if (!acknowledged) {
+        elements.candidateMessage.className = "message warn";
+        elements.candidateMessage.textContent = t("message.searchset.export_canceled");
+        return;
+      }
+
+      const fileBase = safeFileName(payload.items[0] && (payload.items[0].displayName || payload.items[0].fileName), "facetrace-search-set");
+      downloadBlob(new Blob([JSON.stringify(encrypted.envelope, null, 2)], {
+        type: "application/vnd.facetrace.search-set+json"
+      }), `${fileBase}-${exportTimestampSlug()}.facetrace-set`);
+
+      elements.candidateMessage.className = "message";
+      elements.candidateMessage.textContent = t("message.searchset.exported", {
+        items: payload.counts.items,
+        faces: payload.counts.faces
+      });
+    } catch (error) {
+      elements.candidateMessage.className = "message error";
+      elements.candidateMessage.textContent = normalizeError(error);
+    } finally {
+      hideProgress();
+      renderResults();
+    }
+  }
+
+  async function handleSearchSetFiles(files) {
+    if (!files.length) return;
+
+    if (files.length > 1) {
+      elements.candidateMessage.className = "message warn";
+      elements.candidateMessage.textContent = t("error.searchset_multi_file");
+      return;
+    }
+
+    const file = files[0];
+    if (file.size > MAX_SEARCH_SET_FILE_BYTES) {
+      elements.candidateMessage.className = "message error";
+      elements.candidateMessage.textContent = t("error.searchset_too_large", {
+        maxMb: Math.round(MAX_SEARCH_SET_FILE_BYTES / (1024 * 1024))
+      });
+      return;
+    }
+
+    state.runToken += 1;
+    state.processing = false;
+    showProgress(0, 1, "progress.searchset.importing");
+
+    let payload;
+    try {
+      payload = await readSearchSetFile(file);
+    } catch (error) {
+      const errorKey = normalizeErrorKey(error);
+      elements.candidateMessage.className = errorKey === "message.searchset.import_canceled" ? "message" : "message error";
+      elements.candidateMessage.textContent = t(errorKey, normalizeErrorVars(error));
+      hideProgress();
+      return;
+    }
+
+    let mode = "replace";
+    const incomingItems = (payload.items && payload.items.length) || 0;
+    const currentItems = state.candidates.length;
+    if (currentItems > 0) {
+      const choice = await showConfirmDialog({
+        title: t("dialog.import.title"),
+        body: t("dialog.import.body", { currentItems, newItems: incomingItems }),
+        buttons: [
+          { label: t("dialog.import.cancel"), value: null, kind: "cancel" },
+          { label: t("dialog.import.merge"), value: "merge" },
+          { label: t("dialog.import.replace"), value: "replace", kind: "primary" }
+        ]
+      });
+      if (!choice) {
+        elements.candidateMessage.className = "message";
+        elements.candidateMessage.textContent = t("message.searchset.import_canceled");
+        hideProgress();
+        return;
+      }
+      mode = choice;
+    }
+
+    try {
+      const imported = await candidatesFromSearchSet(payload);
+
+      if (mode === "replace") {
+        releaseCandidateObjectUrls();
+        state.candidates = [];
+      }
+      for (const candidate of imported) {
+        candidate.id = state.nextCandidateId++;
+        state.candidates.push(candidate);
+      }
+
+      if (hasUsableReference()) {
+        rescoreAllCandidates();
+      }
+
+      const itemsCount = payload.counts ? payload.counts.items : imported.length;
+      const facesCount = payload.counts
+        ? payload.counts.faces
+        : imported.reduce((sum, candidate) => sum + (candidate.result && candidate.result.faces ? candidate.result.faces.length : 0), 0);
+
+      if (!hasUsableReference()) {
+        elements.candidateMessage.className = "message";
+        elements.candidateMessage.textContent = t("message.searchset.import_no_reference", { items: itemsCount });
+      } else {
+        elements.candidateMessage.className = "message";
+        elements.candidateMessage.textContent = t("message.searchset.imported", { items: itemsCount, faces: facesCount });
+      }
+    } catch (error) {
+      elements.candidateMessage.className = "message error";
+      elements.candidateMessage.textContent = normalizeError(error);
+    } finally {
+      hideProgress();
+      renderResults();
+    }
+  }
+
+  async function readSearchSetFile(file) {
+    let bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+      bytes = await decompressPayload(bytes, "gzip");
+    }
+
+    let parsed;
+    try {
+      const text = bytesToText(bytes);
+      parsed = JSON.parse(text);
+    } catch (_error) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+
+    if (parsed && parsed.format === SEARCH_SET_ENVELOPE_FORMAT) {
+      parsed = await decryptSearchSetEnvelope(parsed);
+    }
+    validateSearchSetPayload(parsed);
+    return parsed;
+  }
+
+  async function parseSearchSetShareKey() {
+    const raw = await promptForShareKey();
+    if (raw === null) {
+      throw makeI18nError("message.searchset.import_canceled");
+    }
+    if (!String(raw).trim()) {
+      throw makeI18nError("error.searchset_key_required");
+    }
+    const value = String(raw).trim();
+    const encoded = value.startsWith(SEARCH_SET_KEY_PREFIX) ? value.slice(SEARCH_SET_KEY_PREFIX.length) : value;
+    let keyBytes;
+    try {
+      keyBytes = base64UrlToBytes(encoded);
+    } catch (_error) {
+      throw makeI18nError("error.searchset_key_invalid");
+    }
+    if (!keyBytes || keyBytes.length !== AES_GCM_KEY_BYTES) {
+      throw makeI18nError("error.searchset_key_invalid");
+    }
+    return keyBytes;
+  }
+
+  async function decryptSearchSetEnvelope(envelope) {
+    if (!window.crypto || !window.crypto.subtle) {
+      throw makeI18nError("error.crypto_unavailable");
+    }
+    if (!envelope.header || !envelope.header.encryption || !envelope.ciphertext || envelope.header.encryption.algorithm !== "AES-256-GCM") {
+      throw makeI18nError("error.searchset_invalid");
+    }
+
+    const keyBytes = await parseSearchSetShareKey();
+    const key = await window.crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+    const iv = base64UrlToBytes(envelope.header.encryption.iv);
+    const additionalData = textToBytes(stableStringify(envelope.header));
+    let decrypted;
+    try {
+      decrypted = new Uint8Array(await window.crypto.subtle.decrypt({
+        name: "AES-GCM",
+        iv,
+        additionalData,
+        tagLength: envelope.header.encryption.tagLength || AES_GCM_TAG_BITS
+      }, key, base64UrlToBytes(envelope.ciphertext)));
+    } catch (_error) {
+      throw makeI18nError("error.searchset_decrypt_failed");
+    }
+
+    const payloadBytes = await decompressPayload(decrypted, envelope.header.payload.compression);
+    try {
+      return JSON.parse(bytesToText(payloadBytes));
+    } catch (_error) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+  }
+
+  function validateSearchSetPayload(payload) {
+    if (!payload || payload.format !== SEARCH_SET_FORMAT || payload.schemaVersion !== SEARCH_SET_SCHEMA_VERSION || !Array.isArray(payload.items)) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+    const model = payload.model || {};
+    if (model.embeddingDim !== ARCFACE_EMBEDDING_DIM || model.descriptorEncoding !== "float32-le-base64") {
+      throw makeI18nError("error.searchset_incompatible");
+    }
+  }
+
+  async function candidatesFromSearchSet(payload) {
+    const candidates = [];
+    const placeholderName = t("searchset.unnamed_file");
+    for (const item of payload.items) {
+      const faces = [];
+      const rawFaces = Array.isArray(item.faces) ? item.faces : [];
+      for (let index = 0; index < rawFaces.length; index += 1) {
+        const face = rawFaces[index];
+        const detectorScoreRaw = Number(face.detectorScore);
+        const qualityScoreRaw = face.quality ? Number(face.quality.detectorScore) : NaN;
+        faces.push({
+          index: Number.isFinite(face.index) ? face.index : index,
+          descriptor: decodeDescriptor(face.descriptor),
+          score: Number.isFinite(detectorScoreRaw)
+            ? detectorScoreRaw
+            : (Number.isFinite(qualityScoreRaw) ? qualityScoreRaw : 0),
+          box: face.box || { x: 0, y: 0, width: 0, height: 0 },
+          crop: assetToObjectUrl(face.crop),
+          quality: face.quality || {}
+        });
+      }
+
+      const attribution = normalizeAttribution(item.attribution);
+      const fileNameIsPlaceholder = !item.fileName;
+      const fileName = item.fileName || placeholderName;
+      const analysis = {
+        importedSetId: state.nextImportedSetId,
+        fileName,
+        displayName: item.displayName || "",
+        sourceUrl: item.sourceUrl || "",
+        attribution,
+        fileSize: item.fileSize || 0,
+        fileType: item.fileType || "unknown",
+        width: item.width || 0,
+        height: item.height || 0,
+        thumbnail: assetToObjectUrl(item.thumbnail),
+        faces,
+        faceCount: faces.length,
+        status: faces.length ? "ok" : "no-face",
+        comparisons: [],
+        best: null,
+        statusKind: faces.length ? "" : "error",
+        statusKey: faces.length ? "candidate.state.waiting_reference" : "error.no_face_detected",
+        statusVars: {},
+        errorKey: faces.length ? null : "error.no_face_detected",
+        errorVars: {}
+      };
+
+      candidates.push({
+        id: 0,
+        file: null,
+        fileName: analysis.fileName,
+        fileNameIsPlaceholder,
+        displayName: analysis.displayName,
+        sourceUrl: analysis.sourceUrl,
+        attribution,
+        status: "done",
+        result: hasUsableReference() ? scoreCandidateAnalysis(analysis) : analysis,
+        error: null
+      });
+    }
+    state.nextImportedSetId += 1;
+    return candidates;
+  }
+
   // ---------- CSV export ----------
 
   function exportCsv() {
     const rows = [[
       t("csv.filename"),
+      t("csv.display_name"),
+      t("csv.author"),
+      t("csv.license"),
+      t("csv.source_link"),
       t("csv.status"),
       t("csv.face_count"),
       t("csv.similarity_percent"),
@@ -7773,8 +9135,13 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
       const result = candidate.result;
       const best = result && result.best ? result.best : null;
       const quality = best ? best.quality : null;
+      const attribution = normalizeAttribution((result && result.attribution) || candidate.attribution);
       rows.push([
         candidate.fileName,
+        candidate.displayName || "",
+        attribution ? attribution.author : "",
+        attribution ? attribution.license : "",
+        attribution ? attribution.sourceLink : "",
         result ? t(result.statusKey || "candidate.state.pending", result.statusVars || {}) : t("candidate.state.pending"),
         result ? String(result.faceCount || 0) : "",
         best ? String(best.similarity) : "",
@@ -7792,16 +9159,11 @@ window.FACETRACE_EMBEDDED_LOCALES = {"en":{"app.title":"FaceTrace Offline","spon
       ]);
     }
 
-    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${t("csv.filename_prefix")}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 250);
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+    // U+FEFF BOM so Excel on Windows opens UTF-8 cleanly without mojibake on
+    // accented attribution fields.
+    const blob = new Blob(["﻿", csv], { type: "text/csv;charset=utf-8" });
+    downloadBlob(blob, `${t("csv.filename_prefix")}-${exportTimestampSlug()}.csv`);
   }
 
   function csvEscape(value) {
