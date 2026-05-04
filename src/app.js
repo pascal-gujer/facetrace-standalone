@@ -80,6 +80,7 @@
     candidates: [],
     nextCandidateId: 1,
     nextImportedSetId: 1,
+    editMode: false,
     sortMode: "similarity-desc"
   };
 
@@ -104,6 +105,7 @@
     candidateMessage: document.getElementById("candidateMessage"),
     importSetButton: document.getElementById("importSetButton"),
     exportSetButton: document.getElementById("exportSetButton"),
+    editModeButton: document.getElementById("editModeButton"),
     searchSetInput: document.getElementById("searchSetInput"),
     languageSelect: document.getElementById("languageSelect"),
     sortSelect: document.getElementById("sortSelect"),
@@ -127,7 +129,17 @@
     importKeyInput: document.getElementById("importKeyInput"),
     importKeyError: document.getElementById("importKeyError"),
     importKeyConfirmButton: document.getElementById("importKeyConfirmButton"),
-    importKeyCancelButton: document.getElementById("importKeyCancelButton")
+    importKeyCancelButton: document.getElementById("importKeyCancelButton"),
+    editEntryDialog: document.getElementById("editEntryDialog"),
+    editEntryFileName: document.getElementById("editEntryFileName"),
+    editEntryDisplayName: document.getElementById("editEntryDisplayName"),
+    editEntrySourceUrl: document.getElementById("editEntrySourceUrl"),
+    editEntryAuthor: document.getElementById("editEntryAuthor"),
+    editEntryLicense: document.getElementById("editEntryLicense"),
+    editEntrySourceLink: document.getElementById("editEntrySourceLink"),
+    editEntryNotes: document.getElementById("editEntryNotes"),
+    editEntrySaveButton: document.getElementById("editEntrySaveButton"),
+    editEntryCancelButton: document.getElementById("editEntryCancelButton")
   };
 
   // ---------- generic helpers ----------
@@ -252,6 +264,7 @@
     applyI18nToDom();
     refreshModelStatusText();
     refreshProgressText();
+    refreshEditModeButton();
     retranslatePlaceholderFileNames();
     renderReference();
     renderResults();
@@ -274,6 +287,14 @@
 
   function refreshProgressText() {
     elements.progressText.textContent = t(state.progressKey, state.progressVars);
+  }
+
+  function refreshEditModeButton() {
+    if (!elements.editModeButton) return;
+    elements.editModeButton.textContent = t(state.editMode ? "button.done_editing" : "button.edit_entries");
+    elements.editModeButton.setAttribute("aria-pressed", state.editMode ? "true" : "false");
+    elements.editModeButton.classList.toggle("active-edit", state.editMode);
+    elements.editModeButton.disabled = !state.candidates.length;
   }
 
   function formatNumber(value, digits = 4) {
@@ -440,6 +461,45 @@
       notes: String(value.notes || "").trim()
     };
     return attribution.author || attribution.license || attribution.sourceLink || attribution.notes ? attribution : null;
+  }
+
+  function blankAttribution() {
+    return { author: "", license: "", sourceLink: "", notes: "" };
+  }
+
+  function normalizeEditedUrl(value) {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return "";
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol === "http:" || url.protocol === "https:") return url.href;
+      // javascript:, data:, ftp:, etc. — drop silently.
+      return "";
+    } catch (_) {
+      // No scheme or malformed; try prepending https:// for typo tolerance.
+      try {
+        const url = new URL(`https://${trimmed}`);
+        if (url.protocol === "https:" && url.hostname) return url.href;
+      } catch (_inner) {}
+      return "";
+    }
+  }
+
+  function candidateAttribution(candidate) {
+    return normalizeAttribution((candidate && candidate.attribution) || (candidate && candidate.result && candidate.result.attribution)) || blankAttribution();
+  }
+
+  function candidateDisplayName(candidate) {
+    return (candidate && (candidate.displayName || (candidate.result && candidate.result.displayName))) || "";
+  }
+
+  function candidateSourceUrl(candidate) {
+    return (candidate && (candidate.sourceUrl || (candidate.result && candidate.result.sourceUrl))) || "";
+  }
+
+  function editableFileName(candidate) {
+    if (!candidate) return "";
+    return candidate.fileNameIsPlaceholder ? "" : (candidate.fileName || (candidate.result && candidate.result.fileName) || "");
   }
 
   function isLikelyImage(file) {
@@ -1102,6 +1162,70 @@
     });
   }
 
+  function showEditEntryDialog(candidate) {
+    const dialog = elements.editEntryDialog;
+    const attribution = candidateAttribution(candidate);
+    elements.editEntryFileName.value = editableFileName(candidate);
+    elements.editEntryDisplayName.value = candidateDisplayName(candidate);
+    elements.editEntrySourceUrl.value = candidateSourceUrl(candidate);
+    elements.editEntryAuthor.value = attribution.author;
+    elements.editEntryLicense.value = attribution.license;
+    elements.editEntrySourceLink.value = attribution.sourceLink;
+    elements.editEntryNotes.value = attribution.notes;
+
+    const opener = document.activeElement;
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      const finish = (value) => {
+        if (resolved) return;
+        resolved = true;
+        elements.editEntrySaveButton.removeEventListener("click", onSave);
+        elements.editEntryCancelButton.removeEventListener("click", onCancel);
+        dialog.removeEventListener("close", onClose);
+        dialog.removeEventListener("keydown", onKeydown);
+        closeDialog(dialog);
+        if (opener && typeof opener.focus === "function") {
+          try { opener.focus(); } catch (_) {}
+        }
+        resolve(value);
+      };
+
+      const onSave = () => finish({
+        fileName: elements.editEntryFileName.value,
+        displayName: elements.editEntryDisplayName.value,
+        sourceUrl: elements.editEntrySourceUrl.value,
+        attribution: {
+          author: elements.editEntryAuthor.value,
+          license: elements.editEntryLicense.value,
+          sourceLink: elements.editEntrySourceLink.value,
+          notes: elements.editEntryNotes.value
+        }
+      });
+      const onCancel = () => finish(null);
+      const onClose = () => finish(null);
+      const onKeydown = (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+          event.preventDefault();
+          onSave();
+        }
+      };
+
+      elements.editEntrySaveButton.addEventListener("click", onSave);
+      elements.editEntryCancelButton.addEventListener("click", onCancel);
+      dialog.addEventListener("close", onClose);
+      dialog.addEventListener("keydown", onKeydown);
+
+      openDialog(dialog);
+
+      try {
+        elements.editEntryFileName.focus();
+        elements.editEntryFileName.select();
+      } catch (_) {}
+    });
+  }
+
   // ---------- input bindings ----------
 
   function bindDropzone(dropzone, input, onFiles) {
@@ -1140,6 +1264,9 @@
   bindDropzone(elements.referenceDropzone, elements.referenceInput, handleReferenceFiles);
   bindDropzone(elements.candidateDropzone, elements.candidateInput, handleCandidateFiles);
   elements.importSetButton.addEventListener("click", () => elements.searchSetInput.click());
+  elements.editModeButton.addEventListener("click", () => {
+    setEditMode(!state.editMode);
+  });
   elements.searchSetInput.addEventListener("change", () => {
     handleSearchSetFiles(Array.from(elements.searchSetInput.files || []));
     elements.searchSetInput.value = "";
@@ -1154,6 +1281,7 @@
     state.candidates = [];
     state.nextCandidateId = 1;
     state.nextImportedSetId = 1;
+    state.editMode = false;
     hideProgress();
     renderReference();
     renderResults();
@@ -1172,10 +1300,23 @@
       candidate.result.displayName = input.value;
     }
   });
-  elements.resultsList.addEventListener("click", (event) => {
-    const button = event.target && event.target.closest ? event.target.closest("[data-candidate-attribution]") : null;
-    if (!button) return;
-    openAttributionDialog(button.getAttribute("data-candidate-attribution"));
+  elements.resultsList.addEventListener("click", async (event) => {
+    if (!event.target || !event.target.closest) return;
+    const editButton = event.target.closest("[data-candidate-edit]");
+    if (editButton) {
+      await openEditEntryDialog(editButton.getAttribute("data-candidate-edit"));
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-candidate-delete]");
+    if (deleteButton) {
+      await confirmDeleteCandidate(deleteButton.getAttribute("data-candidate-delete"));
+      return;
+    }
+
+    const attributionButton = event.target.closest("[data-candidate-attribution]");
+    if (!attributionButton) return;
+    openAttributionDialog(attributionButton.getAttribute("data-candidate-attribution"));
   });
   elements.attributionDialogClose.addEventListener("click", () => {
     if (elements.attributionDialog.close) {
@@ -1188,6 +1329,86 @@
     state.sortMode = elements.sortSelect.value;
     renderResults();
   });
+
+  function setEditMode(enabled) {
+    state.editMode = Boolean(enabled && state.candidates.length);
+    refreshEditModeButton();
+    renderResults();
+  }
+
+  function findCandidateById(candidateId) {
+    return state.candidates.find((item) => String(item.id) === String(candidateId)) || null;
+  }
+
+  function applyCandidateMetadata(candidate, metadata) {
+    if (!candidate || !metadata) return;
+    const fileName = String(metadata.fileName || "").trim();
+    const displayName = String(metadata.displayName || "").trim();
+    const sourceUrl = normalizeEditedUrl(metadata.sourceUrl);
+    const rawAttribution = metadata.attribution || {};
+    const attribution = normalizeAttribution({
+      author: rawAttribution.author,
+      license: rawAttribution.license,
+      sourceLink: normalizeEditedUrl(rawAttribution.sourceLink),
+      notes: rawAttribution.notes
+    });
+
+    candidate.fileNameIsPlaceholder = !fileName;
+    candidate.fileName = fileName || t("searchset.unnamed_file");
+    candidate.displayName = displayName;
+    candidate.sourceUrl = sourceUrl;
+    candidate.attribution = attribution;
+
+    if (candidate.result) {
+      candidate.result.fileName = candidate.fileName;
+      candidate.result.displayName = displayName;
+      candidate.result.sourceUrl = sourceUrl;
+      candidate.result.attribution = attribution;
+    }
+  }
+
+  async function openEditEntryDialog(candidateId) {
+    const candidate = findCandidateById(candidateId);
+    if (!candidate) return;
+    const metadata = await showEditEntryDialog(candidate);
+    if (!metadata) return;
+    applyCandidateMetadata(candidate, metadata);
+    renderResults();
+    updateCandidateMessage();
+  }
+
+  function deleteCandidate(candidateId) {
+    const index = state.candidates.findIndex((item) => String(item.id) === String(candidateId));
+    if (index < 0) return false;
+    const [candidate] = state.candidates.splice(index, 1);
+    if (candidate && candidate.status === "processing") {
+      state.runToken += 1;
+    }
+    releaseAnalysisUrls(candidate && candidate.result);
+    if (!state.candidates.length) {
+      state.editMode = false;
+    }
+    refreshEditModeButton();
+    renderResults();
+    updateCandidateMessage();
+    return true;
+  }
+
+  async function confirmDeleteCandidate(candidateId) {
+    const candidate = findCandidateById(candidateId);
+    if (!candidate) return;
+    const label = candidateDisplayName(candidate) || candidate.fileName || t("searchset.unnamed_file");
+    const decision = await showConfirmDialog({
+      title: t("dialog.delete_entry.title"),
+      body: t("dialog.delete_entry.body", { name: label }),
+      buttons: [
+        { label: t("dialog.delete_entry.cancel"), value: null, kind: "cancel" },
+        { label: t("dialog.delete_entry.confirm"), value: "delete", kind: "danger" }
+      ]
+    });
+    if (decision !== "delete") return;
+    deleteCandidate(candidateId);
+  }
 
   // ---------- reference / candidate handling ----------
 
@@ -1341,6 +1562,7 @@
           cancelled = true;
           break;
         }
+        analysis.fileName = candidate.fileName || analysis.fileName;
         analysis.displayName = candidate.displayName || "";
         analysis.sourceUrl = candidate.sourceUrl || "";
         analysis.attribution = normalizeAttribution(candidate.attribution);
@@ -1358,6 +1580,9 @@
         const errorVars = normalizeErrorVars(error);
         candidate.result = {
           fileName: candidate.fileName,
+          displayName: candidate.displayName || "",
+          sourceUrl: candidate.sourceUrl || "",
+          attribution: normalizeAttribution(candidate.attribution),
           thumbnail: "",
           width: 0,
           height: 0,
@@ -1984,6 +2209,10 @@
   }
 
   function renderResults() {
+    if (!state.candidates.length && state.editMode) {
+      state.editMode = false;
+    }
+    refreshEditModeButton();
     elements.exportButton.disabled = !state.candidates.some((candidate) => candidate.result);
     elements.exportSetButton.disabled = !state.candidates.some((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.length);
 
@@ -2031,6 +2260,29 @@
     return candidates;
   }
 
+  function renderCandidateNameBlock(candidate) {
+    const displayName = candidateDisplayName(candidate);
+    // Inline editable display-name input is always available (matches the
+    // original UX before edit-mode existed). Edit-mode adds the per-row
+    // Edit/Delete buttons on top, but does not gate inline name editing.
+    return `
+      <label class="name-field">
+        <span class="sr-only">${escapeHtml(t("label.display_name"))}</span>
+        <input class="name-input" type="text" value="${escapeHtml(displayName)}" placeholder="${escapeHtml(t("placeholder.display_name"))}" data-candidate-display-name="${candidate.id}">
+      </label>
+    `;
+  }
+
+  function renderCandidateEditActions(candidate) {
+    if (!state.editMode) return "";
+    return `
+      <span class="entry-actions">
+        <button class="entry-action-button" type="button" data-candidate-edit="${candidate.id}">${escapeHtml(t("button.edit_entry"))}</button>
+        <button class="entry-action-button danger" type="button" data-candidate-delete="${candidate.id}">${escapeHtml(t("button.delete_entry"))}</button>
+      </span>
+    `;
+  }
+
   function renderCandidateCard(candidate) {
     if (!candidate.result) {
       const status = candidate.status === "processing"
@@ -2044,11 +2296,11 @@
           <div class="face-thumb"><div class="empty-state">${escapeHtml(t("label.face"))}</div></div>
           <div class="result-main">
             <div class="filename" title="${escapeHtml(candidate.fileName)}">${escapeHtml(candidate.fileName)}</div>
-            <label class="name-field">
-              <span class="sr-only">${escapeHtml(t("label.display_name"))}</span>
-              <input class="name-input" type="text" value="${escapeHtml(candidate.displayName || "")}" placeholder="${escapeHtml(t("placeholder.display_name"))}" data-candidate-display-name="${candidate.id}">
-            </label>
-            <div class="status-row"><span class="badge">${status}</span></div>
+            ${renderCandidateNameBlock(candidate)}
+            <div class="status-row">
+              <span class="badge">${status}</span>
+              ${renderCandidateEditActions(candidate)}
+            </div>
           </div>
           <div class="score-block">
             <div class="score unavailable">${escapeHtml(t("candidate.state.pending"))}</div>
@@ -2093,15 +2345,13 @@
         </div>
         <div class="result-main">
           <div class="filename" title="${escapeHtml(candidate.fileName)}">${escapeHtml(candidate.fileName)}</div>
-          <label class="name-field">
-            <span class="sr-only">${escapeHtml(t("label.display_name"))}</span>
-            <input class="name-input" type="text" value="${escapeHtml(candidate.displayName || result.displayName || "")}" placeholder="${escapeHtml(t("placeholder.display_name"))}" data-candidate-display-name="${candidate.id}">
-          </label>
+          ${renderCandidateNameBlock(candidate)}
           <div class="status-row">
             <span class="badge ${statusKind}">${escapeHtml(t(result.statusKey || "candidate.state.pending", result.statusVars || {}))}</span>
             <span class="badge">${escapeHtml(t("label.face_count", { count: result.faceCount || 0 }))}</span>
             ${qualityIssues}
             ${attributionButton}
+            ${renderCandidateEditActions(candidate)}
           </div>
         </div>
         <div class="score-block">
@@ -2304,7 +2554,7 @@
     for (let i = 0; i < candidates.length; i += 1) {
       const candidate = candidates[i];
       const result = candidate.result;
-      const attribution = normalizeAttribution(result.attribution || candidate.attribution);
+      const attribution = normalizeAttribution(candidate.attribution || result.attribution);
       const faces = [];
       for (const face of result.faces || []) {
         faces.push({
@@ -2321,7 +2571,7 @@
         id: `item-${items.length + 1}`,
         fileName: candidate.fileNameIsPlaceholder ? "" : (candidate.fileName || result.fileName || ""),
         displayName: candidate.displayName || result.displayName || "",
-        sourceUrl: result.sourceUrl || candidate.sourceUrl || "",
+        sourceUrl: candidate.sourceUrl || result.sourceUrl || "",
         attribution: attribution || undefined,
         fileSize: result.fileSize || null,
         fileType: result.fileType || "unknown",
@@ -2742,7 +2992,7 @@
       const attribution = normalizeAttribution((result && result.attribution) || candidate.attribution);
       rows.push([
         candidate.fileName,
-        candidate.displayName || "",
+        candidateDisplayName(candidate),
         attribution ? attribution.author : "",
         attribution ? attribution.license : "",
         attribution ? attribution.sourceLink : "",

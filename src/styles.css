@@ -40,7 +40,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -56,6 +57,9 @@ summary:focus-visible,
 .dropzone:focus-visible,
 .face-choice:focus-visible,
 .info-button:focus-visible,
+.entry-action-button:focus-visible,
+.dialog-input:focus-visible,
+.dialog-textarea:focus-visible,
 .github-ribbon:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.35);
   outline-offset: 2px;
@@ -291,6 +295,12 @@ h1 {
   background: var(--accent);
 }
 
+.button.danger {
+  border-color: var(--danger);
+  color: #ffffff;
+  background: var(--danger);
+}
+
 .button:hover:not(:disabled) {
   border-color: #9aa7bb;
   background: #f9fafb;
@@ -299,6 +309,17 @@ h1 {
 .button.primary:hover:not(:disabled) {
   border-color: var(--accent-strong);
   background: var(--accent-strong);
+}
+
+.button.danger:hover:not(:disabled) {
+  border-color: #991b1b;
+  background: #991b1b;
+}
+
+.button.active-edit {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: var(--warning-soft);
 }
 
 .button:disabled {
@@ -629,6 +650,19 @@ progress::-moz-progress-bar {
   font-weight: 600;
 }
 
+.display-name {
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  color: var(--accent-strong);
+  font-size: 0.92rem;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status-row {
   display: flex;
   flex-wrap: wrap;
@@ -679,6 +713,42 @@ progress::-moz-progress-bar {
 .info-button:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+.entry-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.entry-action-button {
+  min-height: 26px;
+  border: 1px solid #b7c3d4;
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.entry-action-button:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.entry-action-button.danger {
+  border-color: #fecaca;
+  color: var(--danger);
+  background: #fff7f7;
+}
+
+.entry-action-button.danger:hover {
+  border-color: var(--danger);
+  color: #ffffff;
+  background: var(--danger);
 }
 
 .score-block {
@@ -935,6 +1005,51 @@ progress::-moz-progress-bar {
   letter-spacing: 0.02em;
 }
 
+.edit-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dialog-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dialog-field-wide {
+  grid-column: 1 / -1;
+}
+
+.dialog-input,
+.dialog-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.dialog-textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.dialog-hint {
+  flex: 1 1 auto;
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .share-key-row {
   display: flex;
   gap: 8px;
@@ -1121,8 +1236,28 @@ footer {
     flex: 1 1 auto;
   }
 
+  .edit-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
   .share-key-row {
     flex-direction: column;
+  }
+
+  .entry-action-button {
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 0.86rem;
+  }
+
+  .entry-actions {
+    gap: 8px;
+  }
+
+  .dialog-hint {
+    flex: 1 1 100%;
+    text-align: center;
+    padding-bottom: 4px;
   }
 }
 

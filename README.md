@@ -161,6 +161,31 @@ imported items alongside.
 If no reference face is loaded, imported descriptors sit ready until a
 reference image is added; the app will then score them automatically.
 
+### Editing
+
+Click **Edit entries** in the candidate panel to curate the current candidate
+list. Editing mode exposes per-entry edit and delete controls without cluttering
+the normal matching view. The display name is also editable inline on every
+result card regardless of edit mode.
+
+The edit dialog can update filenames, real names, source URLs, and attribution
+fields (`author`, `license`, `sourceLink`, and `notes`). Generated recognition
+data such as descriptors, thumbnails, crops, quality metrics, and similarity
+scores remains read-only. Press `⌘`/`Ctrl` + `Enter` to save the dialog without
+reaching for the mouse.
+
+URL fields (source URL and source link) are normalised on save: `http(s)://`
+URLs are accepted as-is, host-only entries get an implicit `https://` prefix,
+and any other scheme (`javascript:`, `data:`, `ftp:`, ...) is dropped silently.
+
+Clearing the filename field falls back to a localised placeholder
+("Imported image" / "Importiertes Bild" / "Image importée"). The placeholder
+re-translates automatically on language switch.
+
+Edits live for the current browser session and any subsequent CSV or
+`.facetrace-set` export. They are discarded by **Clear session**, by importing
+a search set with **Replace**, or by reloading the page.
+
 ### Format
 
 The portable on-disk format is documented in [`docs/search-set-format.md`](docs/search-set-format.md)

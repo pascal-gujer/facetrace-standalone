@@ -94,6 +94,7 @@
             <button class="button" type="button" id="candidatePickButton" data-i18n="button.add_images"></button>
             <button class="button" type="button" id="importSetButton" data-i18n="button.import_set"></button>
             <button class="button" type="button" id="exportSetButton" disabled data-i18n="button.export_set"></button>
+            <button class="button" type="button" id="editModeButton" aria-pressed="false" data-i18n="button.edit_entries"></button>
           </div>
         </div>
         <div class="panel-body">
@@ -185,6 +186,49 @@
     <div class="dialog-actions">
       <button class="button" type="button" id="importKeyCancelButton" data-i18n="dialog.import_key.cancel"></button>
       <button class="button primary" type="button" id="importKeyConfirmButton" data-i18n="dialog.import_key.confirm"></button>
+    </div>
+  </dialog>
+
+  <dialog class="app-dialog edit-entry-dialog" id="editEntryDialog" aria-labelledby="editEntryDialogTitle">
+    <div class="dialog-header">
+      <h2 id="editEntryDialogTitle" data-i18n="dialog.edit_entry.title"></h2>
+    </div>
+    <div class="dialog-body">
+      <div class="edit-entry-grid">
+        <label class="dialog-field" for="editEntryFileName">
+          <span data-i18n="detail.filename"></span>
+          <input class="dialog-input" id="editEntryFileName" type="text" autocomplete="off">
+        </label>
+        <label class="dialog-field" for="editEntryDisplayName">
+          <span data-i18n="detail.display_name"></span>
+          <input class="dialog-input" id="editEntryDisplayName" type="text" autocomplete="off" data-i18n-placeholder="placeholder.display_name">
+        </label>
+        <label class="dialog-field" for="editEntrySourceUrl">
+          <span data-i18n="detail.source_url"></span>
+          <input class="dialog-input" id="editEntrySourceUrl" type="url" autocomplete="off">
+        </label>
+        <label class="dialog-field" for="editEntryAuthor">
+          <span data-i18n="detail.author"></span>
+          <input class="dialog-input" id="editEntryAuthor" type="text" autocomplete="off">
+        </label>
+        <label class="dialog-field" for="editEntryLicense">
+          <span data-i18n="detail.license"></span>
+          <input class="dialog-input" id="editEntryLicense" type="text" autocomplete="off">
+        </label>
+        <label class="dialog-field" for="editEntrySourceLink">
+          <span data-i18n="detail.source_link"></span>
+          <input class="dialog-input" id="editEntrySourceLink" type="url" autocomplete="off">
+        </label>
+        <label class="dialog-field dialog-field-wide" for="editEntryNotes">
+          <span data-i18n="detail.attribution_notes"></span>
+          <textarea class="dialog-textarea" id="editEntryNotes" rows="3"></textarea>
+        </label>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <span class="dialog-hint" id="editEntrySaveHint" data-i18n="dialog.edit_entry.save_hint"></span>
+      <button class="button" type="button" id="editEntryCancelButton" data-i18n="dialog.edit_entry.cancel"></button>
+      <button class="button primary" type="button" id="editEntrySaveButton" data-i18n="dialog.edit_entry.save"></button>
     </div>
   </dialog>
 
