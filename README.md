@@ -6,6 +6,16 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://pascal-gujer.github.io/facetrace-standalone/"><strong>Open the live app</strong></a>
+  ·
+  <a href="https://github.com/pascal-gujer/facetrace-standalone/releases/latest">Download the latest release</a>
+</p>
+
+<p align="center">
+  <sub>No install, build step, account, upload, backend, or localhost server required. The GitHub Pages copy is the same standalone browser app and still processes selected images locally on your device.</sub>
+</p>
+
 FaceTrace Offline is a standalone browser app for local face similarity comparison. It runs entirely client-side from a self-contained `index.html`; there is no server, upload, telemetry, CDN, cloud API, or remote model download.
 
 ## Example Run
@@ -22,9 +32,14 @@ FaceTrace Offline is a standalone browser app for local face similarity comparis
 
 ## Run Offline
 
-1. Open `index.html` directly in a modern browser.
-2. Do not start a local server; no `localhost` connection is required or used.
-3. Select one reference image, then select one or many candidate images.
+Fastest path: open the hosted copy at `https://pascal-gujer.github.io/facetrace-standalone/`. It runs fully client-side; selected images are not uploaded.
+
+For a fully offline copy:
+
+1. Download `index.html` from the latest release or clone this repository.
+2. Open `index.html` directly in a modern browser.
+3. Do not start a local server; no `localhost` connection is required or used.
+4. Select one reference image, then select one or many candidate images.
 
 The app is designed to work from a direct `file://` open. The face-api UMD bundle (which embeds TensorFlow.js v4 internally as `faceapi.tf`) and all model weights are inlined into `index.html`, so the browser does not need to load additional JavaScript, fetch model shards from the local filesystem, or contact the network.
 
@@ -76,6 +91,7 @@ The build script intentionally rejects generated HTML that reintroduces external
 - The workflow runs JavaScript syntax checks on the maintained source and generated model bundle.
 - Manual workflow runs can deploy the generated `index.html` and this README as the GitHub Pages site.
 - Pushing a tag named `v*` creates a GitHub Release with `index.html` and `README.md` attached.
+- Manual workflow runs can also create a release tag by filling `release_tag`, for example `v1.2.3`. The workflow tags the selected commit, uploads the standalone release assets, and the tag push remains compatible with the automatic release path.
 
 Pages deployment is deliberately manual so ordinary pushes do not accidentally publish an unfinished private build. To publish it, first open the GitHub repository settings and choose `Settings > Pages > Build and deployment > Source > GitHub Actions`, then run the `Build, Pages, Release` workflow manually with `deploy_pages` enabled. The workflow does not use `actions/configure-pages` automatic enablement because that requires a token other than the default `GITHUB_TOKEN`; keeping it manual avoids storing a Pages administration token in the repository.
 
