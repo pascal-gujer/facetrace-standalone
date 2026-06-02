@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data:; media-src 'self' blob: data:; worker-src 'self' blob:; child-src 'self' blob:; form-action 'none'; frame-ancestors 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data:; media-src 'self' blob: data:; worker-src 'self' blob:; child-src 'self' blob:; form-action 'none'; base-uri 'none'">
   <title data-i18n="app.title"></title>
   <style>
 {{FACETRACE_CSS}}  </style>
@@ -235,11 +235,10 @@
   <script>
 {{FACETRACE_CANVAS_PATCH_JS}}  </script>
   <script>
-    /* Embedded vladmandic/face-api v1.7.x (UMD bundle, includes TensorFlow.js
-       v4 reachable as faceapi.tf). Source license: vendor/face-api.LICENSE. */
-{{FACETRACE_FACE_API_JS}}  </script>
+    /* Embedded onnxruntime-web WASM runtime. Source license: vendor/onnxruntime-web.LICENSE. */
+{{FACETRACE_ORT_JS}}  </script>
   <script>
-    /* Embedded gzip-compressed local FaceTrace model bundle generated from models/. */
+    /* Embedded gzip-compressed local ONNX Runtime WASM + FaceTrace model bundle generated from models/. */
 {{FACETRACE_MODEL_BUNDLE_JS}}  </script>
   <script>
 {{FACETRACE_LOCALES_JS}}  </script>

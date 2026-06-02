@@ -7,9 +7,9 @@
 
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
 
-  // face-api.js reads canvas pixels repeatedly while extracting face crops and
-  // descriptors. Supplying this hint on first 2D-context creation avoids
-  // Chrome's repeated getImageData readback warning and can improve CPU paths.
+  // The local detector, alignment, and quality paths read canvas pixels often.
+  // Supplying this hint on first 2D-context creation avoids Chrome's repeated
+  // getImageData readback warning and can improve CPU paths.
   HTMLCanvasElement.prototype.getContext = function patchedGetContext(contextId, options) {
     if (String(contextId).toLowerCase() !== "2d") {
       return originalGetContext.call(this, contextId, options);

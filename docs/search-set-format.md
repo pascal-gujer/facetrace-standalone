@@ -77,21 +77,26 @@ After decryption and decompression, the payload is JSON:
     "runtime": "browser"
   },
   "model": {
-    "id": "facetrace-arcface-256-v1",
-    "embeddingDim": 256,
+    "id": "facetrace-yunet-sface-128-v1",
+    "embeddingDim": 128,
     "descriptorEncoding": "float32-le-base64",
-    "detector": "face-api tiny_face_detector_model",
-    "landmarks": "face-api face_landmark_68_model",
-    "recognizer": "SE-MobileFaceNet ArcFace TF.js GraphModel",
-    "alignment": "insightface-5point-112",
-    "tta": "horizontal-flip-average-l2",
+    "detector": "OpenCV YuNet face_detection_yunet_2026may.onnx",
+    "detectorThreshold": 0.7,
+    "detectorNmsThreshold": 0.3,
+    "landmarks": "YuNet 5-point landmarks",
+    "recognizer": "OpenCV SFace face_recognition_sface_2021dec_int8.onnx",
+    "alignment": "opencv-sface-5point-112",
+    "tta": "none",
+    "descriptorNormalization": "l2",
     "maxAnalysisSide": 1600,
     "thumbnailSide": 260,
     "faceCropSide": 144,
     "similarity": {
       "metric": "cosine",
-      "percentCenter": 0.32,
-      "percentSlope": 12
+      "sameIdentityThreshold": 0.363,
+      "percentCenter": 0.363,
+      "percentSlope": 14,
+      "calibration": "SFace-specific heuristic; not comparable with legacy ArcFace percentages"
     }
   },
   "counts": {
@@ -111,6 +116,13 @@ Importers must reject incompatible descriptor dimensions or descriptor
 encodings. Producers should keep `model.id` stable only when they produce
 descriptors with the same model assets, alignment, test-time augmentation, and
 normalization behavior.
+
+The browser importer also recognizes legacy
+`facetrace-arcface-256-v1` / 256-dimension search sets exported by older
+FaceTrace builds. Those legacy descriptors are not compared directly with the
+current SFace reference. The app asks for confirmation and attempts to
+reprocess stored thumbnails or face crops into the current
+`facetrace-yunet-sface-128-v1` descriptor format.
 
 ## Items
 
@@ -190,7 +202,7 @@ Each face entry contains one searchable face descriptor:
 {
   "index": 0,
   "descriptor": {
-    "dimensions": 256,
+    "dimensions": 128,
     "encoding": "float32-le-base64",
     "data": "base64-little-endian-float32-bytes"
   },
@@ -218,25 +230,27 @@ Each face entry contains one searchable face descriptor:
 }
 ```
 
-Descriptors are stored as exactly 256 little-endian IEEE-754 `float32` values.
+Descriptors are stored as exactly 128 little-endian IEEE-754 `float32` values.
 The bytes are base64-encoded using regular base64, not base64url.
 
 ## External Generator Requirements
 
 An external generator should only claim `model.id:
-"facetrace-arcface-256-v1"` when it matches the browser pipeline:
+"facetrace-yunet-sface-128-v1"` when it matches the browser pipeline:
 
-- face detection: face-api Tiny Face Detector assets from this repository
-- landmarks: face-api 68-point landmark assets from this repository
-- alignment: InsightFace 5-point 112x112 template
-- recognizer: repository ArcFace TF.js GraphModel equivalent
-- descriptor: original and horizontally flipped embeddings averaged, then
-  L2-normalized
-- descriptor encoding: 256 little-endian float32 values
+- face detection: OpenCV YuNet `face_detection_yunet_2026may.onnx`
+- detector score threshold: 0.7
+- detector NMS threshold: 0.3
+- landmarks: YuNet 5-point output
+- alignment: OpenCV SFace 5-point 112x112 template
+- recognizer: OpenCV SFace `face_recognition_sface_2021dec_int8.onnx`
+- descriptor: single aligned crop embedding, then L2-normalized
+- descriptor encoding: 128 little-endian float32 values
 
 If a tool uses a different model, alignment, embedding dimension, or TTA policy,
 it should use a different `model.id`. The current browser importer rejects
-non-256 or non-`float32-le-base64` descriptors.
+non-128 or non-`float32-le-base64` current descriptors. Older
+`facetrace-arcface-256-v1` files are treated as migration inputs only.
 
 ## Privacy
 

@@ -1,16 +1,24 @@
 (() => {
   "use strict";
 
-  // The directory base passed to face-api and TF.js loaders. The fetch shim
-  // strips this prefix and serves bytes from the embedded bundle instead.
-  const FACE_API_BASE = "facetrace-models";
-  const ARCFACE_BASE = "facetrace-models/arcface";
-
   const MAX_ANALYSIS_SIDE = 1600;
   const THUMBNAIL_SIDE = 260;
   const FACE_CROP_SIDE = 144;
-  const ARCFACE_INPUT_SIDE = 112;
-  const ARCFACE_EMBEDDING_DIM = 256;
+  const SFACE_INPUT_SIDE = 112;
+  const SFACE_EMBEDDING_DIM = 128;
+  const DESCRIPTOR_ENCODING = "float32-le-base64";
+  const CURRENT_MODEL_ID = "facetrace-yunet-sface-128-v1";
+  const LEGACY_MODEL_ID = "facetrace-arcface-256-v1";
+  const ORT_WASM_MJS_ASSET = "ort-wasm-simd-threaded.mjs";
+  const ORT_WASM_ASSET = "ort-wasm-simd-threaded.wasm";
+  const YUNET_MODEL_ASSET = "face_detection_yunet_2026may.onnx";
+  const SFACE_MODEL_ASSET = "face_recognition_sface_2021dec_int8.onnx";
+  const YUNET_INPUT_DIVISOR = 32;
+  const YUNET_STRIDES = [8, 16, 32];
+  const YUNET_SCORE_THRESHOLD = 0.7;
+  const YUNET_NMS_THRESHOLD = 0.3;
+  const YUNET_TOP_K = 5000;
+  const SFACE_COSINE_THRESHOLD = 0.363;
   const LOCALE_STORAGE_KEY = "facetrace.locale";
   const DEFAULT_LOCALE = "en";
   const SUPPORTED_LOCALES = ["en", "de", "fr"];
@@ -25,12 +33,12 @@
   const MAX_SEARCH_SET_FILE_BYTES = 512 * 1024 * 1024;
   const DOWNLOAD_URL_TTL_MS = 60_000;
 
-  // Calibration of cosine similarity to a user-facing percentage. The model
-  // (SE-MobileFaceNet trained with ArcFace loss on MS1M) typically separates
-  // same/different identities around cosine 0.32. The sigmoid is centered
-  // there so that 50% maps to the empirical decision boundary.
-  const COSINE_PERCENT_CENTER = 0.32;
-  const COSINE_PERCENT_SLOPE = 12;
+  // Heuristic SFace cosine-to-percentage calibration. OpenCV's SFace example
+  // uses cosine ~=0.363 as its same-identity threshold; 50% maps there. Raw
+  // cosine remains visible because this percentage is not comparable to old
+  // ArcFace/MobileFaceNet percentages.
+  const COSINE_PERCENT_CENTER = SFACE_COSINE_THRESHOLD;
+  const COSINE_PERCENT_SLOPE = 14;
 
   // Quality thresholds used to flag (not reject) marginal faces.
   const MIN_DETECTOR_SCORE_FOR_GOOD = 0.55;
@@ -42,8 +50,8 @@
   const READBACK_CONTEXT_OPTIONS = { alpha: false, willReadFrequently: true };
   const DRAW_CONTEXT_OPTIONS = { alpha: false, willReadFrequently: false };
 
-  // ArcFace canonical 5-point landmarks at 112x112 (InsightFace standard).
-  const ARCFACE_REFERENCE_LANDMARKS = [
+  // SFace/OpenCV 5-point reference landmarks at 112x112.
+  const SFACE_REFERENCE_LANDMARKS = [
     [38.2946, 51.6963],
     [73.5318, 51.5014],
     [56.0252, 71.7366],
@@ -52,16 +60,12 @@
   ];
 
   let analysisQueue = Promise.resolve();
-  let arcfaceModel = null;
+  let yunetSession = null;
+  let sfaceSession = null;
+  let modelLoadPromise = null;
   let renderResultsScheduled = false;
   const objectUrls = new Set();
   const objectUrlBlobs = new Map();
-
-  // The bundled face-api UMD ships TensorFlow.js v4 internally and exposes it
-  // as faceapi.tf. We use that single engine for face-api detection, ArcFace
-  // GraphModel inference, and tensor scope management — no second TF.js
-  // bundle, no global kernel-registry conflicts.
-  let tfRef = null;
 
   const state = {
     modelsReady: false,
@@ -515,6 +519,19 @@
     return bytes;
   }
 
+  function bytesForBundleEntry(bundle, name) {
+    const entry = bundle && bundle[name];
+    if (!entry || entry.kind !== "binary" || typeof entry.base64 !== "string") {
+      throw makeI18nError("error.bundle_shape");
+    }
+    return base64ToUint8Array(entry.base64);
+  }
+
+  function bundleEntryBlobUrl(bundle, name, type) {
+    const bytes = bytesForBundleEntry(bundle, name);
+    return URL.createObjectURL(new Blob([bytes], { type }));
+  }
+
   // ---------- bundle decompression ----------
 
   async function decodeEmbeddedBundle() {
@@ -543,8 +560,8 @@
   }
 
   function freeEmbeddedBundle(bundle) {
-    // Drop references so the GC can reclaim ~3 MB of model bytes plus the
-    // ~2 MB compressed base64 once both face-api and ArcFace finish loading.
+    // Drop references so the GC can reclaim compressed/base64 model bytes once
+    // ONNX Runtime has initialized and both sessions have copied their models.
     try { window.FACETRACE_EMBEDDED_MODELS_GZIP_B64 = ""; } catch (_) {}
     if (bundle) {
       for (const key of Object.keys(bundle)) {
@@ -595,43 +612,6 @@
 
     window.fetch = offlineFetch;
 
-    // face-api ships its own bundled TF.js (faceapi.tf). The model loaders
-    // route their requests through faceapi.env.fetch, so patch that too.
-    if (window.faceapi && faceapi.env && typeof faceapi.env.getEnv === "function") {
-      try {
-        faceapi.env.getEnv().fetch = offlineFetch;
-      } catch (_error) {
-        if (typeof faceapi.env.createBrowserEnv === "function" && typeof faceapi.env.setEnv === "function") {
-          const browserEnv = faceapi.env.createBrowserEnv();
-          browserEnv.fetch = offlineFetch;
-          faceapi.env.setEnv(browserEnv);
-        }
-      }
-    }
-  }
-
-  // ---------- TF.js backend selection ----------
-
-  async function selectTfjsBackend() {
-    if (!tfRef || typeof tfRef.setBackend !== "function") {
-      throw makeI18nError("error.tf_unavailable");
-    }
-    // Prefer WebGL for ~10-50x speedup on most machines. Locked-down browsers
-    // without WebGL fall back to the pure-JS CPU backend.
-    for (const name of ["webgl", "cpu"]) {
-      try {
-        const ok = await tfRef.setBackend(name);
-        if (ok) {
-          await tfRef.ready();
-          if (tfRef.getBackend() === name) return name;
-        }
-      } catch (_error) {
-        // try next
-      }
-    }
-    await tfRef.setBackend("cpu");
-    await tfRef.ready();
-    return tfRef.getBackend() || "cpu";
   }
 
   // ---------- model loading ----------
@@ -639,38 +619,53 @@
   async function loadModels() {
     setModelStatus("loading", "status.model.decoding");
     let bundle = null;
+    const runtimeBlobUrls = [];
     try {
-      if (!window.faceapi) {
-        throw makeI18nError("error.faceapi_unavailable");
-      }
-      tfRef = window.faceapi.tf || null;
-      if (!tfRef || typeof tfRef.loadGraphModel !== "function") {
-        throw makeI18nError("error.faceapi_tf_unavailable");
+      if (!window.ort || !ort.InferenceSession || !ort.Tensor) {
+        throw makeI18nError("error.ort_unavailable");
       }
 
       bundle = await decodeEmbeddedBundle();
       installOfflineModelFetch(bundle);
 
       setModelStatus("loading", "status.model.select_backend");
-      state.backend = await selectTfjsBackend();
+      state.backend = "ONNX Runtime Web WASM";
+      ort.env.logLevel = "fatal";
+      // Single-threaded by design. Multi-threaded WASM needs SharedArrayBuffer,
+      // which requires cross-origin isolation (COOP/COEP) — unavailable for a
+      // single file opened from file:// or served by default GitHub Pages.
+      // Keeping numThreads at 1 guarantees the offline single-file build runs
+      // everywhere; SIMD (ort-wasm-simd-threaded) still provides the speedup.
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+      const ortWasmMjsUrl = bundleEntryBlobUrl(bundle, ORT_WASM_MJS_ASSET, "text/javascript");
+      runtimeBlobUrls.push(ortWasmMjsUrl);
+      ort.env.wasm.wasmPaths = { mjs: ortWasmMjsUrl };
+      ort.env.wasm.wasmBinary = bytesForBundleEntry(bundle, ORT_WASM_ASSET);
+
+      const sessionOptions = {
+        executionProviders: ["wasm"],
+        graphOptimizationLevel: "all",
+        logSeverityLevel: 4,
+        logVerbosityLevel: 0
+      };
 
       setModelStatus("loading", "status.model.loading_detector", { backend: state.backend });
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_BASE),
-        faceapi.nets.faceLandmark68Net.loadFromUri(FACE_API_BASE)
-      ]);
+      yunetSession = await ort.InferenceSession.create(bytesForBundleEntry(bundle, YUNET_MODEL_ASSET), sessionOptions);
 
-      setModelStatus("loading", "status.model.loading_arcface", { backend: state.backend });
-      arcfaceModel = await tfRef.loadGraphModel(`${ARCFACE_BASE}/model.json`);
+      setModelStatus("loading", "status.model.loading_sface", { backend: state.backend });
+      sfaceSession = await ort.InferenceSession.create(bytesForBundleEntry(bundle, SFACE_MODEL_ASSET), sessionOptions);
 
-      // Warm-up pass: run one zero-input inference so WebGL programs and
-      // CPU kernels are compiled now rather than on the first real face.
-      tfRef.tidy(() => {
-        const dummy = tfRef.zeros([1, ARCFACE_INPUT_SIDE, ARCFACE_INPUT_SIDE, 3], "float32");
-        const out = arcfaceModel.predict(dummy);
-        if (Array.isArray(out)) out.forEach((t) => t.dispose());
-        else out.dispose();
+      // Warm-up pass: initialize ORT kernels and SFace once before the first
+      // user image. YuNet runs dynamically, so a tiny padded input is enough.
+      await yunetSession.run({
+        input: new ort.Tensor("float32", new Float32Array(1 * 3 * 32 * 32), [1, 3, 32, 32])
       });
+      await sfaceSession.run({
+        data: new ort.Tensor("float32", new Float32Array(1 * 3 * SFACE_INPUT_SIDE * SFACE_INPUT_SIDE), [1, 3, SFACE_INPUT_SIDE, SFACE_INPUT_SIDE])
+      });
+      try { ort.env.wasm.wasmBinary = undefined; } catch (_) {}
+      try { ort.env.wasm.wasmPaths = undefined; } catch (_) {}
 
       state.modelsReady = true;
       state.modelError = null;
@@ -685,6 +680,13 @@
       elements.referenceMessage.textContent = t("status.model.unavailable_hint");
       updateCandidateMessage();
     } finally {
+      if (window.ort && window.ort.env && window.ort.env.wasm) {
+        try { window.ort.env.wasm.wasmBinary = undefined; } catch (_) {}
+        try { window.ort.env.wasm.wasmPaths = undefined; } catch (_) {}
+      }
+      for (const url of runtimeBlobUrls) {
+        URL.revokeObjectURL(url);
+      }
       // Free the embedded source bytes regardless of success/failure. On
       // failure there's nothing useful left to do with them anyway.
       freeEmbeddedBundle(bundle);
@@ -699,31 +701,6 @@
   }
 
   // ---------- 5-point alignment ----------
-
-  function average68LandmarkRange(positions, fromIndex, toExclusive) {
-    let sumX = 0;
-    let sumY = 0;
-    const count = toExclusive - fromIndex;
-    for (let i = fromIndex; i < toExclusive; i += 1) {
-      sumX += positions[i].x;
-      sumY += positions[i].y;
-    }
-    return [sumX / count, sumY / count];
-  }
-
-  function fivePointFrom68(landmarks) {
-    const positions = landmarks.positions;
-    if (!positions || positions.length < 68) {
-      return null;
-    }
-    return [
-      average68LandmarkRange(positions, 36, 42),     // left eye centroid
-      average68LandmarkRange(positions, 42, 48),     // right eye centroid
-      [positions[30].x, positions[30].y],            // nose tip
-      [positions[48].x, positions[48].y],            // left mouth corner
-      [positions[54].x, positions[54].y]             // right mouth corner
-    ];
-  }
 
   // Closed-form 2D similarity transform (rotation + uniform scale + translation,
   // 4 DOF) from N source points to N reference points by least squares. The
@@ -771,15 +748,15 @@
   }
 
   function alignedFaceCanvas(sourceCanvas, fivePoints) {
-    const [a, b, tx, ty] = similarityTransform(fivePoints, ARCFACE_REFERENCE_LANDMARKS);
+    const [a, b, tx, ty] = similarityTransform(fivePoints, SFACE_REFERENCE_LANDMARKS);
     const canvas = document.createElement("canvas");
-    canvas.width = ARCFACE_INPUT_SIDE;
-    canvas.height = ARCFACE_INPUT_SIDE;
+    canvas.width = SFACE_INPUT_SIDE;
+    canvas.height = SFACE_INPUT_SIDE;
     const context = get2dContext(canvas, READBACK_CONTEXT_OPTIONS);
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
     context.fillStyle = "#000000";
-    context.fillRect(0, 0, ARCFACE_INPUT_SIDE, ARCFACE_INPUT_SIDE);
+    context.fillRect(0, 0, SFACE_INPUT_SIDE, SFACE_INPUT_SIDE);
     // Canvas matrix is [a c e; b d f]. Our similarity matrix is [a -b tx; b a ty],
     // so set transform = (a, b, -b, a, tx, ty).
     context.setTransform(a, b, -b, a, tx, ty);
@@ -788,31 +765,7 @@
     return canvas;
   }
 
-  function mirroredCanvas(sourceCanvas) {
-    const canvas = document.createElement("canvas");
-    canvas.width = sourceCanvas.width;
-    canvas.height = sourceCanvas.height;
-    const context = get2dContext(canvas, READBACK_CONTEXT_OPTIONS);
-    context.translate(sourceCanvas.width, 0);
-    context.scale(-1, 1);
-    context.drawImage(sourceCanvas, 0, 0);
-    return canvas;
-  }
-
-  // ---------- ArcFace embedding ----------
-
-  function beginTensorScope() {
-    // Wrap any tensor-allocating block so transient tensors are reclaimed
-    // promptly even when long batches are processed back-to-back.
-    const engine = tfRef && typeof tfRef.engine === "function" ? tfRef.engine() : null;
-    if (!engine || typeof engine.startScope !== "function" || typeof engine.endScope !== "function") {
-      return () => {};
-    }
-    engine.startScope();
-    return () => {
-      try { engine.endScope(); } catch (_error) { /* ignore */ }
-    };
-  }
+  // ---------- SFace embedding ----------
 
   function l2NormalizeInPlace(vector) {
     let sumOfSquares = 0;
@@ -827,53 +780,170 @@
     return vector;
   }
 
-  async function arcfaceEmbeddingForCanvas(canvas) {
-    // Single-image inference. Tensors are managed manually because predict
-    // returns a tensor that escapes the local tidy scope; the caller awaits
-    // a typed array and we dispose the tensor before returning.
-    const input = tfRef.tidy(() => {
-      const pixels = tfRef.browser.fromPixels(canvas, 3);
-      const normalized = pixels.toFloat().sub(127.5).div(128.0);
-      return normalized.expandDims(0);
-    });
-    const output = arcfaceModel.predict(input);
-    try {
-      const data = await output.data();
-      return new Float32Array(data);
-    } finally {
-      input.dispose();
-      if (Array.isArray(output)) output.forEach((t) => t.dispose());
-      else output.dispose();
+  // SFace channel order: this ONNX export (OpenCV Zoo SFace, int8) is fed RGB,
+  // not BGR — deliberately. Do NOT "fix" this to BGR to match OpenCV's native
+  // blobFromImage(swapRB=false) reference. It was verified empirically against
+  // the George-vs-332-identity fixture set (tools/chrome_smoke.mjs): RGB beat
+  // BGR on every same-identity pair and gave ~2.8x the separation margin
+  // (min(same)-max(cross) cosine: RGB 0.172 vs BGR 0.061), with 0 false matches
+  // at the 0.363 threshold either way. For this model, RGB separates better.
+  function rgbCanvasToSFaceTensor(canvas) {
+    const context = get2dContext(canvas, READBACK_CONTEXT_OPTIONS);
+    const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = width * height;
+    const input = new Float32Array(3 * pixels);
+    for (let i = 0, p = 0; i < pixels; i += 1, p += 4) {
+      input[i] = data[p];
+      input[pixels + i] = data[p + 1];
+      input[pixels * 2 + i] = data[p + 2];
     }
+    return new ort.Tensor("float32", input, [1, 3, height, width]);
   }
 
-  function averageDescriptors(left, right) {
-    const out = new Float32Array(left.length);
-    for (let i = 0; i < left.length; i += 1) {
-      out[i] = (left[i] + right[i]) * 0.5;
+  async function sfaceEmbeddingForCanvas(canvas) {
+    const input = rgbCanvasToSFaceTensor(canvas);
+    const outputs = await sfaceSession.run({ data: input });
+    const output = outputs.fc1 || outputs[sfaceSession.outputNames[0]];
+    const descriptor = new Float32Array(output.data);
+    if (descriptor.length !== SFACE_EMBEDDING_DIM) {
+      throw makeI18nError("error.sface_output_invalid");
     }
-    return out;
+    l2NormalizeInPlace(descriptor);
+    return descriptor;
   }
 
-  async function descriptorWithFlipTta(alignedCanvas) {
-    // Test-Time Augmentation: ArcFace is rotation-sensitive but learned to
-    // be roughly mirror-invariant. Averaging the original and horizontally
-    // flipped embeddings consistently improves matching on out-of-distribution
-    // faces (1-3% on benchmarks). We L2-normalize at the end so cosine
-    // similarity reduces to a simple dot product.
-    const flipped = mirroredCanvas(alignedCanvas);
-    try {
-      const [a, b] = await Promise.all([
-        arcfaceEmbeddingForCanvas(alignedCanvas),
-        arcfaceEmbeddingForCanvas(flipped)
-      ]);
-      const merged = averageDescriptors(a, b);
-      l2NormalizeInPlace(merged);
-      return merged;
-    } finally {
-      flipped.width = 0;
-      flipped.height = 0;
+  // ---------- YuNet detection ----------
+
+  function nextMultiple(value, divisor) {
+    return Math.max(divisor, Math.ceil(value / divisor) * divisor);
+  }
+
+  function canvasToYuNetTensorInfo(canvas) {
+    const width = canvas.width;
+    const height = canvas.height;
+    const paddedWidth = nextMultiple(width, YUNET_INPUT_DIVISOR);
+    const paddedHeight = nextMultiple(height, YUNET_INPUT_DIVISOR);
+    const context = get2dContext(canvas, READBACK_CONTEXT_OPTIONS);
+    const { data } = context.getImageData(0, 0, width, height);
+    const pixels = paddedWidth * paddedHeight;
+    const input = new Float32Array(3 * pixels);
+
+    for (let y = 0; y < height; y += 1) {
+      const sourceRow = y * width * 4;
+      const targetRow = y * paddedWidth;
+      for (let x = 0; x < width; x += 1) {
+        const source = sourceRow + x * 4;
+        const target = targetRow + x;
+        // OpenCV FaceDetectorYN uses blobFromImage without swapRB: BGR, 0-255.
+        input[target] = data[source + 2];
+        input[pixels + target] = data[source + 1];
+        input[pixels * 2 + target] = data[source];
+      }
     }
+
+    return {
+      tensor: new ort.Tensor("float32", input, [1, 3, paddedHeight, paddedWidth]),
+      width,
+      height,
+      paddedWidth,
+      paddedHeight
+    };
+  }
+
+  async function detectYuNetFaces(canvas) {
+    const input = canvasToYuNetTensorInfo(canvas);
+    const outputs = await yunetSession.run({ input: input.tensor });
+    return postprocessYuNet(outputs, input.paddedWidth, input.paddedHeight);
+  }
+
+  function postprocessYuNet(outputs, paddedWidth, paddedHeight) {
+    const faces = [];
+    for (const stride of YUNET_STRIDES) {
+      const cols = Math.floor(paddedWidth / stride);
+      const rows = Math.floor(paddedHeight / stride);
+      const cls = outputs[`cls_${stride}`] && outputs[`cls_${stride}`].data;
+      const obj = outputs[`obj_${stride}`] && outputs[`obj_${stride}`].data;
+      const bbox = outputs[`bbox_${stride}`] && outputs[`bbox_${stride}`].data;
+      const kps = outputs[`kps_${stride}`] && outputs[`kps_${stride}`].data;
+      if (!cls || !obj || !bbox || !kps) {
+        throw makeI18nError("error.yunet_output_invalid");
+      }
+
+      for (let row = 0; row < rows; row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const index = row * cols + col;
+          const clsScore = clamp(Number(cls[index]) || 0, 0, 1);
+          const objScore = clamp(Number(obj[index]) || 0, 0, 1);
+          const score = Math.sqrt(clsScore * objScore);
+          if (score < YUNET_SCORE_THRESHOLD) continue;
+
+          const boxOffset = index * 4;
+          const cx = (col + bbox[boxOffset]) * stride;
+          const cy = (row + bbox[boxOffset + 1]) * stride;
+          const width = Math.exp(bbox[boxOffset + 2]) * stride;
+          const height = Math.exp(bbox[boxOffset + 3]) * stride;
+          if (!Number.isFinite(cx + cy + width + height) || width <= 0 || height <= 0) continue;
+
+          const landmarkOffset = index * 10;
+          const landmarks = [];
+          for (let point = 0; point < 5; point += 1) {
+            landmarks.push([
+              (kps[landmarkOffset + point * 2] + col) * stride,
+              (kps[landmarkOffset + point * 2 + 1] + row) * stride
+            ]);
+          }
+
+          faces.push({
+            score,
+            box: {
+              x: cx - width / 2,
+              y: cy - height / 2,
+              width,
+              height
+            },
+            landmarks
+          });
+        }
+      }
+    }
+    return nonMaxSuppressFaces(faces, YUNET_NMS_THRESHOLD, YUNET_TOP_K);
+  }
+
+  function boxIntersectionOverUnion(left, right) {
+    const leftX2 = left.x + left.width;
+    const leftY2 = left.y + left.height;
+    const rightX2 = right.x + right.width;
+    const rightY2 = right.y + right.height;
+    const x1 = Math.max(left.x, right.x);
+    const y1 = Math.max(left.y, right.y);
+    const x2 = Math.min(leftX2, rightX2);
+    const y2 = Math.min(leftY2, rightY2);
+    const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    const union = Math.max(0, left.width) * Math.max(0, left.height)
+      + Math.max(0, right.width) * Math.max(0, right.height)
+      - intersection;
+    return union > 0 ? intersection / union : 0;
+  }
+
+  function nonMaxSuppressFaces(faces, threshold, topK) {
+    const sorted = faces
+      .filter((face) => face && face.box && Number.isFinite(face.score))
+      .sort((left, right) => right.score - left.score);
+    const kept = [];
+    for (const face of sorted) {
+      let suppressed = false;
+      for (const selected of kept) {
+        if (boxIntersectionOverUnion(face.box, selected.box) > threshold) {
+          suppressed = true;
+          break;
+        }
+      }
+      if (!suppressed) {
+        kept.push(face);
+        if (kept.length >= topK) break;
+      }
+    }
+    return kept;
   }
 
   // ---------- quality signals ----------
@@ -908,7 +978,7 @@
   function laplacianVarianceForCanvas(canvas) {
     // Cheap blur estimator. Lower variance = blurrier image. Operates on a
     // small grayscale grid sampled from the aligned face, so runtime is
-    // bounded by ARCFACE_INPUT_SIDE^2.
+    // bounded by SFACE_INPUT_SIDE^2.
     const context = get2dContext(canvas, READBACK_CONTEXT_OPTIONS);
     const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
     const grayscale = new Float32Array(width * height);
@@ -1645,53 +1715,37 @@
       analysisCanvas = drawImageToCanvas(loaded.image, MAX_ANALYSIS_SIDE);
       thumbnail = await canvasToObjectUrl(analysisCanvas, THUMBNAIL_SIDE, 0.82);
 
-      const detectorOptions = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 416,
-        scoreThreshold: 0.4
-      });
-
-      // face-api detection + landmarks. The face-api faceRecognitionNet is no
-      // longer used; ArcFace replaces it for descriptor extraction.
-      // Wrap in a tensor scope so transient detection tensors are released
-      // even when long batches are processed back-to-back.
-      const endScope = beginTensorScope();
-      let detections;
-      try {
-        detections = await faceapi
-          .detectAllFaces(analysisCanvas, detectorOptions)
-          .withFaceLandmarks();
-      } finally {
-        endScope();
-      }
+      const detections = await detectYuNetFaces(analysisCanvas);
 
       for (let index = 0; index < detections.length; index += 1) {
         const detection = detections[index];
-        const fivePoints = fivePointFrom68(detection.landmarks);
-        if (!fivePoints) continue;
+        const fivePoints = detection.landmarks;
+        if (!fivePoints || fivePoints.length !== 5) continue;
 
         const aligned = alignedFaceCanvas(analysisCanvas, fivePoints);
         let descriptor;
         let blurVariance;
         try {
-          descriptor = await descriptorWithFlipTta(aligned);
+          descriptor = await sfaceEmbeddingForCanvas(aligned);
           blurVariance = laplacianVarianceForCanvas(aligned);
         } finally {
           aligned.width = 0;
           aligned.height = 0;
         }
 
-        const box = detection.detection.box;
+        const box = detection.box;
         const { yawRatio, pitchRatio, rollDegrees } = poseRatiosFromFivePoints(fivePoints);
         const crop = await cropFaceToObjectUrl(analysisCanvas, box, FACE_CROP_SIDE);
 
         faces.push({
           index,
           descriptor,
-          score: detection.detection.score,
+          modelId: CURRENT_MODEL_ID,
+          score: detection.score,
           box: { x: box.x, y: box.y, width: box.width, height: box.height },
           crop,
           quality: {
-            detectorScore: detection.detection.score,
+            detectorScore: detection.score,
             yawRatio,
             pitchRatio,
             rollDegrees,
@@ -1703,8 +1757,10 @@
       }
 
       faces.sort((left, right) => (right.box.width * right.box.height) - (left.box.width * left.box.height));
+      faces.forEach((face, index) => { face.index = index; });
 
       const analysis = {
+        modelId: CURRENT_MODEL_ID,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type || "unknown",
@@ -1876,44 +1932,63 @@
   }
 
   function assetToObjectUrl(asset) {
-    if (!asset) return "";
-    if (asset.encoding !== "base64" || typeof asset.data !== "string") {
-      throw makeI18nError("error.searchset_invalid");
-    }
-    const bytes = base64ToBytes(asset.data);
-    const blob = new Blob([bytes], { type: asset.mediaType || "application/octet-stream" });
+    const blob = assetToBlob(asset, false);
+    if (!blob) return "";
     return registerObjectUrl(URL.createObjectURL(blob), blob);
   }
 
-  function encodeDescriptor(descriptor) {
-    if (!descriptor || descriptor.length !== ARCFACE_EMBEDDING_DIM) {
+  function assetToBlob(asset, requireImage) {
+    if (!asset) return null;
+    if (asset.encoding !== "base64" || typeof asset.data !== "string") {
       throw makeI18nError("error.searchset_invalid");
     }
-    const buffer = new ArrayBuffer(ARCFACE_EMBEDDING_DIM * 4);
+    const mediaType = asset.mediaType || "application/octet-stream";
+    if (requireImage && !String(mediaType).startsWith("image/")) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+    const bytes = base64ToBytes(asset.data);
+    return new Blob([bytes], { type: mediaType });
+  }
+
+  async function verifyAssetSha256(asset, blob) {
+    if (!asset || !asset.sha256 || !blob) return;
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const digest = await sha256Base64Url(bytes);
+    if (digest !== asset.sha256) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+  }
+
+  function encodeDescriptor(descriptor) {
+    if (!descriptor || descriptor.length !== SFACE_EMBEDDING_DIM) {
+      throw makeI18nError("error.searchset_invalid");
+    }
+    const buffer = new ArrayBuffer(SFACE_EMBEDDING_DIM * 4);
     const view = new DataView(buffer);
-    for (let index = 0; index < ARCFACE_EMBEDDING_DIM; index += 1) {
+    for (let index = 0; index < SFACE_EMBEDDING_DIM; index += 1) {
       view.setFloat32(index * 4, Number(descriptor[index]) || 0, true);
     }
     return {
-      dimensions: ARCFACE_EMBEDDING_DIM,
-      encoding: "float32-le-base64",
+      dimensions: SFACE_EMBEDDING_DIM,
+      encoding: DESCRIPTOR_ENCODING,
       data: bytesToBase64(new Uint8Array(buffer))
     };
   }
 
   function decodeDescriptor(encoded) {
-    if (!encoded || encoded.encoding !== "float32-le-base64" || encoded.dimensions !== ARCFACE_EMBEDDING_DIM) {
+    if (!encoded || encoded.encoding !== DESCRIPTOR_ENCODING || encoded.dimensions !== SFACE_EMBEDDING_DIM) {
       throw makeI18nError("error.searchset_incompatible");
     }
     const bytes = base64ToBytes(encoded.data);
-    if (bytes.byteLength !== ARCFACE_EMBEDDING_DIM * 4) {
+    if (bytes.byteLength !== SFACE_EMBEDDING_DIM * 4) {
       throw makeI18nError("error.searchset_incompatible");
     }
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const descriptor = new Float32Array(ARCFACE_EMBEDDING_DIM);
-    for (let index = 0; index < ARCFACE_EMBEDDING_DIM; index += 1) {
+    const descriptor = new Float32Array(SFACE_EMBEDDING_DIM);
+    for (let index = 0; index < SFACE_EMBEDDING_DIM; index += 1) {
       descriptor[index] = view.getFloat32(index * 4, true);
     }
+    l2NormalizeInPlace(descriptor);
     return descriptor;
   }
 
@@ -2002,8 +2077,8 @@
 
   function cosineToPercent(cosine) {
     if (!Number.isFinite(cosine)) return 0;
-    // Calibrated sigmoid: 50% maps to COSINE_PERCENT_CENTER, slope tuned for
-    // SE-MobileFaceNet ArcFace cosine distributions on MS1M-trained weights.
+    // Calibrated sigmoid: 50% maps to OpenCV SFace's documented cosine
+    // threshold. This display percentage is model-specific.
     const z = COSINE_PERCENT_SLOPE * (cosine - COSINE_PERCENT_CENTER);
     const pct = 100 / (1 + Math.exp(-z));
     return Math.round(clamp(pct, 0, 100));
@@ -2044,6 +2119,13 @@
       return base;
     }
 
+    if (referenceFace.modelId !== CURRENT_MODEL_ID || analysis.modelId !== CURRENT_MODEL_ID) {
+      base.statusKind = "error";
+      base.statusKey = "error.searchset_model_mismatch";
+      base.errorKey = "error.searchset_model_mismatch";
+      return base;
+    }
+
     if (!analysis.faces || analysis.faces.length === 0) {
       base.statusKind = "error";
       base.statusKey = "error.no_face_detected";
@@ -2052,6 +2134,20 @@
     }
 
     base.comparisons = analysis.faces.map((face, index) => {
+      if (face.modelId !== CURRENT_MODEL_ID || !face.descriptor || face.descriptor.length !== SFACE_EMBEDDING_DIM) {
+        return {
+          faceIndex: index,
+          originalFaceIndex: face.index,
+          cosine: Number.NaN,
+          distance: Number.POSITIVE_INFINITY,
+          similarity: 0,
+          interpretationKey: "similarity.very_low",
+          detectorScore: face.score || 0,
+          crop: face.crop,
+          qualityIssues: ["quality.incompatible_model"],
+          quality: face.quality || {}
+        };
+      }
       const cosine = dotProduct(referenceFace.descriptor, face.descriptor);
       const distance = euclideanDistance(referenceFace.descriptor, face.descriptor);
       const similarity = cosineToPercent(cosine);
@@ -2069,7 +2165,15 @@
       };
     });
 
-    base.best = base.comparisons.reduce((best, item) => {
+    const comparable = base.comparisons.filter((item) => Number.isFinite(item.cosine));
+    if (!comparable.length) {
+      base.statusKind = "error";
+      base.statusKey = "error.searchset_model_mismatch";
+      base.errorKey = "error.searchset_model_mismatch";
+      return base;
+    }
+
+    base.best = comparable.reduce((best, item) => {
       if (!best || item.similarity > best.similarity) return item;
       if (item.similarity === best.similarity && item.cosine > best.cosine) return item;
       return best;
@@ -2214,7 +2318,7 @@
     }
     refreshEditModeButton();
     elements.exportButton.disabled = !state.candidates.some((candidate) => candidate.result);
-    elements.exportSetButton.disabled = !state.candidates.some((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.length);
+    elements.exportSetButton.disabled = !state.candidates.some((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.some(isCurrentSearchSetFace));
 
     if (!state.candidates.length) {
       elements.summaryCounts.textContent = t("results.empty");
@@ -2332,6 +2436,9 @@
     const attributionButton = attribution
       ? `<button class="info-button" type="button" data-candidate-attribution="${candidate.id}" title="${escapeHtml(t("button.attribution_info"))}" aria-label="${escapeHtml(t("button.attribution_info"))}">${escapeHtml(t("button.info"))}</button>`
       : "";
+    const migrationBadge = result.migration
+      ? `<span class="badge warn">${escapeHtml(t(result.migration.warningKey || "candidate.state.migrated_from_legacy"))}</span>`
+      : "";
 
     return `
       <article class="result-card">
@@ -2350,6 +2457,7 @@
             <span class="badge ${statusKind}">${escapeHtml(t(result.statusKey || "candidate.state.pending", result.statusVars || {}))}</span>
             <span class="badge">${escapeHtml(t("label.face_count", { count: result.faceCount || 0 }))}</span>
             ${qualityIssues}
+            ${migrationBadge}
             ${attributionButton}
             ${renderCandidateEditActions(candidate)}
           </div>
@@ -2370,10 +2478,21 @@
       [t("detail.filename"), result.fileName],
       [t("detail.display_name"), result.displayName || ""],
       [t("detail.source_url"), result.sourceUrl || ""],
+      [t("detail.model"), result.modelId || CURRENT_MODEL_ID],
       [t("detail.detection_status"), t(result.statusKey || "candidate.state.pending", result.statusVars || {})],
       [t("detail.detected_faces"), String(result.faceCount || 0)],
       [t("detail.image_size"), result.width && result.height ? `${result.width} x ${result.height}` : ""]
     ];
+
+    if (result.migration) {
+      cells.push([
+        t("detail.migration"),
+        t("detail.migration_value", {
+          source: result.migration.source || "",
+          model: result.migration.fromModelId || LEGACY_MODEL_ID
+        })
+      ]);
+    }
 
     if (attribution) {
       for (const cell of [
@@ -2526,23 +2645,35 @@
 
   // ---------- search set import/export ----------
 
+  function isCurrentSearchSetFace(face) {
+    return !!(face
+      && face.modelId === CURRENT_MODEL_ID
+      && face.descriptor
+      && face.descriptor.length === SFACE_EMBEDDING_DIM);
+  }
+
   function searchSetPipelineMetadata() {
     return {
-      id: "facetrace-arcface-256-v1",
-      embeddingDim: ARCFACE_EMBEDDING_DIM,
-      descriptorEncoding: "float32-le-base64",
-      detector: "face-api tiny_face_detector_model",
-      landmarks: "face-api face_landmark_68_model",
-      recognizer: "SE-MobileFaceNet ArcFace TF.js GraphModel",
-      alignment: "insightface-5point-112",
-      tta: "horizontal-flip-average-l2",
+      id: CURRENT_MODEL_ID,
+      embeddingDim: SFACE_EMBEDDING_DIM,
+      descriptorEncoding: DESCRIPTOR_ENCODING,
+      detector: "OpenCV YuNet face_detection_yunet_2026may.onnx",
+      detectorThreshold: YUNET_SCORE_THRESHOLD,
+      detectorNmsThreshold: YUNET_NMS_THRESHOLD,
+      landmarks: "YuNet 5-point landmarks",
+      recognizer: "OpenCV SFace face_recognition_sface_2021dec_int8.onnx",
+      alignment: "opencv-sface-5point-112",
+      tta: "none",
+      descriptorNormalization: "l2",
       maxAnalysisSide: MAX_ANALYSIS_SIDE,
       thumbnailSide: THUMBNAIL_SIDE,
       faceCropSide: FACE_CROP_SIDE,
       similarity: {
         metric: "cosine",
+        sameIdentityThreshold: SFACE_COSINE_THRESHOLD,
         percentCenter: COSINE_PERCENT_CENTER,
-        percentSlope: COSINE_PERCENT_SLOPE
+        percentSlope: COSINE_PERCENT_SLOPE,
+        calibration: "SFace-specific heuristic; not comparable with legacy ArcFace percentages"
       }
     };
   }
@@ -2557,6 +2688,9 @@
       const attribution = normalizeAttribution(candidate.attribution || result.attribution);
       const faces = [];
       for (const face of result.faces || []) {
+        if (!isCurrentSearchSetFace(face)) {
+          continue;
+        }
         faces.push({
           index: face.index,
           descriptor: encodeDescriptor(face.descriptor),
@@ -2658,7 +2792,7 @@
   }
 
   async function exportSearchSet() {
-    const exportable = state.candidates.filter((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.length);
+    const exportable = state.candidates.filter((candidate) => candidate.result && candidate.result.faces && candidate.result.faces.some(isCurrentSearchSetFace));
     if (!exportable.length) {
       elements.candidateMessage.className = "message warn";
       elements.candidateMessage.textContent = t("message.searchset.none_exportable");
@@ -2666,7 +2800,7 @@
     }
 
     const itemCount = exportable.length;
-    const faceCount = exportable.reduce((sum, candidate) => sum + (candidate.result.faces ? candidate.result.faces.length : 0), 0);
+    const faceCount = exportable.reduce((sum, candidate) => sum + (candidate.result.faces ? candidate.result.faces.filter(isCurrentSearchSetFace).length : 0), 0);
 
     const decision = await showConfirmDialog({
       title: t("dialog.export.title"),
@@ -2754,6 +2888,35 @@
     let mode = "replace";
     const incomingItems = (payload.items && payload.items.length) || 0;
     const currentItems = state.candidates.length;
+    const compatibility = payload._facetraceCompatibility || { kind: "current" };
+    if (compatibility.kind === "legacy") {
+      if (!state.modelsReady && modelLoadPromise) {
+        await modelLoadPromise.catch(() => undefined);
+      }
+      try {
+        ensureModelsReady();
+      } catch (error) {
+        elements.candidateMessage.className = "message error";
+        elements.candidateMessage.textContent = normalizeError(error);
+        hideProgress();
+        return;
+      }
+      const choice = await showConfirmDialog({
+        title: t("dialog.model_change.title"),
+        body: t("dialog.model_change.body"),
+        buttons: [
+          { label: t("dialog.model_change.cancel"), value: null, kind: "cancel" },
+          { label: t("dialog.model_change.confirm"), value: "migrate", kind: "primary" }
+        ]
+      });
+      if (choice !== "migrate") {
+        elements.candidateMessage.className = "message";
+        elements.candidateMessage.textContent = t("message.searchset.import_canceled");
+        hideProgress();
+        return;
+      }
+    }
+
     if (currentItems > 0) {
       const choice = await showConfirmDialog({
         title: t("dialog.import.title"),
@@ -2774,7 +2937,10 @@
     }
 
     try {
-      const imported = await candidatesFromSearchSet(payload);
+      showProgress(0, Math.max(incomingItems, 1), compatibility.kind === "legacy" ? "progress.searchset.migrating" : "progress.searchset.importing");
+      const imported = await candidatesFromSearchSet(payload, (done, total) => {
+        showProgress(done, Math.max(total, 1), compatibility.kind === "legacy" ? "progress.searchset.migrating_count" : "progress.candidates.done", { completed: done, total });
+      });
 
       if (mode === "replace") {
         releaseCandidateObjectUrls();
@@ -2790,16 +2956,21 @@
       }
 
       const itemsCount = payload.counts ? payload.counts.items : imported.length;
-      const facesCount = payload.counts
-        ? payload.counts.faces
-        : imported.reduce((sum, candidate) => sum + (candidate.result && candidate.result.faces ? candidate.result.faces.length : 0), 0);
+      const importedFacesCount = imported.reduce((sum, candidate) => sum + (candidate.result && candidate.result.faces ? candidate.result.faces.filter(isCurrentSearchSetFace).length : 0), 0);
+      const facesCount = compatibility.kind === "legacy"
+        ? importedFacesCount
+        : (payload.counts ? payload.counts.faces : importedFacesCount);
 
       if (!hasUsableReference()) {
-        elements.candidateMessage.className = "message";
-        elements.candidateMessage.textContent = t("message.searchset.import_no_reference", { items: itemsCount });
+        elements.candidateMessage.className = compatibility.kind === "legacy" ? "message warn" : "message";
+        elements.candidateMessage.textContent = compatibility.kind === "legacy"
+          ? t("message.searchset.imported_migrated_no_reference", { items: itemsCount, faces: facesCount })
+          : t("message.searchset.import_no_reference", { items: itemsCount });
       } else {
-        elements.candidateMessage.className = "message";
-        elements.candidateMessage.textContent = t("message.searchset.imported", { items: itemsCount, faces: facesCount });
+        elements.candidateMessage.className = compatibility.kind === "legacy" ? "message warn" : "message";
+        elements.candidateMessage.textContent = compatibility.kind === "legacy"
+          ? t("message.searchset.imported_migrated", { items: itemsCount, faces: facesCount })
+          : t("message.searchset.imported", { items: itemsCount, faces: facesCount });
       }
     } catch (error) {
       elements.candidateMessage.className = "message error";
@@ -2827,7 +2998,8 @@
     if (parsed && parsed.format === SEARCH_SET_ENVELOPE_FORMAT) {
       parsed = await decryptSearchSetEnvelope(parsed);
     }
-    validateSearchSetPayload(parsed);
+    const compatibility = classifySearchSetPayload(parsed);
+    parsed._facetraceCompatibility = compatibility;
     return parsed;
   }
 
@@ -2857,13 +3029,27 @@
     if (!window.crypto || !window.crypto.subtle) {
       throw makeI18nError("error.crypto_unavailable");
     }
-    if (!envelope.header || !envelope.header.encryption || !envelope.ciphertext || envelope.header.encryption.algorithm !== "AES-256-GCM") {
+    if (!envelope.header
+      || envelope.format !== SEARCH_SET_ENVELOPE_FORMAT
+      || envelope.envelopeVersion !== SEARCH_SET_ENVELOPE_VERSION
+      || envelope.header.format !== SEARCH_SET_ENVELOPE_FORMAT
+      || envelope.header.envelopeVersion !== SEARCH_SET_ENVELOPE_VERSION
+      || !envelope.header.payload
+      || envelope.header.payload.format !== SEARCH_SET_FORMAT
+      || envelope.header.payload.schemaVersion !== SEARCH_SET_SCHEMA_VERSION
+      || !envelope.header.encryption
+      || envelope.header.encryption.algorithm !== "AES-256-GCM"
+      || envelope.header.encryption.keyFormat !== "ftsk1"
+      || !envelope.ciphertext) {
       throw makeI18nError("error.searchset_invalid");
     }
 
     const keyBytes = await parseSearchSetShareKey();
     const key = await window.crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
     const iv = base64UrlToBytes(envelope.header.encryption.iv);
+    if (iv.length !== AES_GCM_IV_BYTES) {
+      throw makeI18nError("error.searchset_invalid");
+    }
     const additionalData = textToBytes(stableStringify(envelope.header));
     let decrypted;
     try {
@@ -2885,79 +3071,221 @@
     }
   }
 
-  function validateSearchSetPayload(payload) {
+  function classifySearchSetPayload(payload) {
     if (!payload || payload.format !== SEARCH_SET_FORMAT || payload.schemaVersion !== SEARCH_SET_SCHEMA_VERSION || !Array.isArray(payload.items)) {
       throw makeI18nError("error.searchset_invalid");
     }
     const model = payload.model || {};
-    if (model.embeddingDim !== ARCFACE_EMBEDDING_DIM || model.descriptorEncoding !== "float32-le-base64") {
-      throw makeI18nError("error.searchset_incompatible");
+    if (model.id === CURRENT_MODEL_ID && model.embeddingDim === SFACE_EMBEDDING_DIM && model.descriptorEncoding === DESCRIPTOR_ENCODING) {
+      return { kind: "current", modelId: CURRENT_MODEL_ID };
     }
+    if (model.id === LEGACY_MODEL_ID && model.embeddingDim === 256 && model.descriptorEncoding === DESCRIPTOR_ENCODING) {
+      return { kind: "legacy", modelId: LEGACY_MODEL_ID };
+    }
+    throw makeI18nError("error.searchset_incompatible");
   }
 
-  async function candidatesFromSearchSet(payload) {
+  async function candidatesFromSearchSet(payload, onProgress) {
+    const compatibility = payload._facetraceCompatibility || { kind: "current" };
     const candidates = [];
     const placeholderName = t("searchset.unnamed_file");
-    for (const item of payload.items) {
-      const faces = [];
-      const rawFaces = Array.isArray(item.faces) ? item.faces : [];
-      for (let index = 0; index < rawFaces.length; index += 1) {
-        const face = rawFaces[index];
-        const detectorScoreRaw = Number(face.detectorScore);
-        const qualityScoreRaw = face.quality ? Number(face.quality.detectorScore) : NaN;
-        faces.push({
-          index: Number.isFinite(face.index) ? face.index : index,
-          descriptor: decodeDescriptor(face.descriptor),
-          score: Number.isFinite(detectorScoreRaw)
-            ? detectorScoreRaw
-            : (Number.isFinite(qualityScoreRaw) ? qualityScoreRaw : 0),
-          box: face.box || { x: 0, y: 0, width: 0, height: 0 },
-          crop: assetToObjectUrl(face.crop),
-          quality: face.quality || {}
-        });
+    for (let itemIndex = 0; itemIndex < payload.items.length; itemIndex += 1) {
+      const item = payload.items[itemIndex];
+      const candidate = compatibility.kind === "legacy"
+        ? await candidateFromLegacySearchSetItem(item, placeholderName)
+        : candidateFromCurrentSearchSetItem(item, placeholderName);
+      candidates.push(candidate);
+      if (typeof onProgress === "function") {
+        onProgress(itemIndex + 1, payload.items.length);
       }
-
-      const attribution = normalizeAttribution(item.attribution);
-      const fileNameIsPlaceholder = !item.fileName;
-      const fileName = item.fileName || placeholderName;
-      const analysis = {
-        importedSetId: state.nextImportedSetId,
-        fileName,
-        displayName: item.displayName || "",
-        sourceUrl: item.sourceUrl || "",
-        attribution,
-        fileSize: item.fileSize || 0,
-        fileType: item.fileType || "unknown",
-        width: item.width || 0,
-        height: item.height || 0,
-        thumbnail: assetToObjectUrl(item.thumbnail),
-        faces,
-        faceCount: faces.length,
-        status: faces.length ? "ok" : "no-face",
-        comparisons: [],
-        best: null,
-        statusKind: faces.length ? "" : "error",
-        statusKey: faces.length ? "candidate.state.waiting_reference" : "error.no_face_detected",
-        statusVars: {},
-        errorKey: faces.length ? null : "error.no_face_detected",
-        errorVars: {}
-      };
-
-      candidates.push({
-        id: 0,
-        file: null,
-        fileName: analysis.fileName,
-        fileNameIsPlaceholder,
-        displayName: analysis.displayName,
-        sourceUrl: analysis.sourceUrl,
-        attribution,
-        status: "done",
-        result: hasUsableReference() ? scoreCandidateAnalysis(analysis) : analysis,
-        error: null
-      });
+      await yieldToBrowser();
     }
     state.nextImportedSetId += 1;
     return candidates;
+  }
+
+  function candidateFromCurrentSearchSetItem(item, placeholderName) {
+    const faces = [];
+    const rawFaces = Array.isArray(item.faces) ? item.faces : [];
+    for (let index = 0; index < rawFaces.length; index += 1) {
+      const face = rawFaces[index];
+      const detectorScoreRaw = Number(face.detectorScore);
+      const qualityScoreRaw = face.quality ? Number(face.quality.detectorScore) : NaN;
+      faces.push({
+        index: Number.isFinite(face.index) ? face.index : index,
+        descriptor: decodeDescriptor(face.descriptor),
+        modelId: CURRENT_MODEL_ID,
+        score: Number.isFinite(detectorScoreRaw)
+          ? detectorScoreRaw
+          : (Number.isFinite(qualityScoreRaw) ? qualityScoreRaw : 0),
+        box: face.box || { x: 0, y: 0, width: 0, height: 0 },
+        crop: assetToObjectUrl(face.crop),
+        quality: face.quality || {}
+      });
+    }
+
+    const attribution = normalizeAttribution(item.attribution);
+    const fileNameIsPlaceholder = !item.fileName;
+    const fileName = item.fileName || placeholderName;
+    const analysis = {
+      importedSetId: state.nextImportedSetId,
+      modelId: CURRENT_MODEL_ID,
+      fileName,
+      displayName: item.displayName || "",
+      sourceUrl: item.sourceUrl || "",
+      attribution,
+      fileSize: item.fileSize || 0,
+      fileType: item.fileType || "unknown",
+      width: item.width || 0,
+      height: item.height || 0,
+      thumbnail: assetToObjectUrl(item.thumbnail),
+      faces,
+      faceCount: faces.length,
+      status: faces.length ? "ok" : "no-face",
+      comparisons: [],
+      best: null,
+      statusKind: faces.length ? "" : "error",
+      statusKey: faces.length ? "candidate.state.waiting_reference" : "error.no_face_detected",
+      statusVars: {},
+      errorKey: faces.length ? null : "error.no_face_detected",
+      errorVars: {}
+    };
+
+    return {
+      id: 0,
+      file: null,
+      fileName: analysis.fileName,
+      fileNameIsPlaceholder,
+      displayName: analysis.displayName,
+      sourceUrl: analysis.sourceUrl,
+      attribution,
+      status: "done",
+      result: hasUsableReference() ? scoreCandidateAnalysis(analysis) : analysis,
+      error: null
+    };
+  }
+
+  async function candidateFromLegacySearchSetItem(item, placeholderName) {
+    const attribution = normalizeAttribution(item.attribution);
+    const fileNameIsPlaceholder = !item.fileName;
+    const fileName = item.fileName || placeholderName;
+    const metadata = {
+      importedSetId: state.nextImportedSetId,
+      fileName,
+      displayName: item.displayName || "",
+      sourceUrl: item.sourceUrl || "",
+      attribution,
+      fileSize: item.fileSize || 0,
+      fileType: item.fileType || "unknown",
+      width: item.width || 0,
+      height: item.height || 0
+    };
+
+    let migratedAnalysis = null;
+    let thumbnailUrl = "";
+    try {
+      thumbnailUrl = assetToObjectUrl(item.thumbnail);
+    } catch (_error) {
+      thumbnailUrl = "";
+    }
+
+    const assets = migrationAssetsForItem(item);
+    for (const assetInfo of assets) {
+      try {
+        const blob = assetToBlob(assetInfo.asset, true);
+        if (!blob) continue;
+        await verifyAssetSha256(assetInfo.asset, blob);
+        const extension = mediaTypeToExtension(blob.type);
+        const syntheticFile = new File([blob], `${safeFileName(fileName, "legacy-preview")}-${assetInfo.kind}${extension}`, {
+          type: blob.type || "image/jpeg"
+        });
+        const analysis = await analyzeImageFile(syntheticFile);
+        if (analysis.faces.length) {
+          migratedAnalysis = {
+            ...analysis,
+            ...metadata,
+            thumbnail: thumbnailUrl || analysis.thumbnail,
+            modelId: CURRENT_MODEL_ID,
+            migration: {
+              fromModelId: LEGACY_MODEL_ID,
+              source: assetInfo.kind,
+              warningKey: "candidate.state.migrated_from_legacy"
+            },
+            statusKind: "warn",
+            statusKey: "candidate.state.migrated_from_legacy",
+            statusVars: {}
+          };
+          if (thumbnailUrl && thumbnailUrl !== analysis.thumbnail) {
+            releaseObjectUrl(analysis.thumbnail);
+          }
+          break;
+        }
+        releaseAnalysisUrls(analysis);
+      } catch (_error) {
+        // Try the next preview/crop asset before marking this item failed.
+      }
+    }
+
+    if (!migratedAnalysis) {
+      migratedAnalysis = {
+        ...metadata,
+        modelId: CURRENT_MODEL_ID,
+        thumbnail: thumbnailUrl,
+        faces: [],
+        faceCount: 0,
+        status: "error",
+        comparisons: [],
+        best: null,
+        statusKind: "error",
+        statusKey: "candidate.state.migration_failed",
+        statusVars: {},
+        errorKey: "candidate.state.migration_failed",
+        errorVars: {},
+        migration: {
+          fromModelId: LEGACY_MODEL_ID,
+          source: "none",
+          warningKey: "candidate.state.migration_failed"
+        }
+      };
+    }
+
+    return {
+      id: 0,
+      file: null,
+      fileName: migratedAnalysis.fileName,
+      fileNameIsPlaceholder,
+      displayName: migratedAnalysis.displayName,
+      sourceUrl: migratedAnalysis.sourceUrl,
+      attribution,
+      status: "done",
+      result: hasUsableReference() && migratedAnalysis.faces.length
+        ? scoreCandidateAnalysis(migratedAnalysis)
+        : migratedAnalysis,
+      error: null
+    };
+  }
+
+  function migrationAssetsForItem(item) {
+    const assets = [];
+    const fullImage = item.fullImage || item.originalImage || item.image;
+    if (fullImage) assets.push({ kind: "full-image", asset: fullImage });
+    if (item.thumbnail) assets.push({ kind: "thumbnail", asset: item.thumbnail });
+    const rawFaces = Array.isArray(item.faces) ? item.faces : [];
+    rawFaces.forEach((face, index) => {
+      if (face && face.crop) {
+        assets.push({ kind: `crop-${index + 1}`, asset: face.crop });
+      }
+    });
+    return assets;
+  }
+
+  function mediaTypeToExtension(mediaType) {
+    const normalized = String(mediaType || "").toLowerCase();
+    if (normalized.includes("png")) return ".png";
+    if (normalized.includes("webp")) return ".webp";
+    if (normalized.includes("avif")) return ".avif";
+    if (normalized.includes("bmp")) return ".bmp";
+    return ".jpg";
   }
 
   // ---------- CSV export ----------
@@ -3040,5 +3368,5 @@
   renderReference();
   renderResults();
   updateCandidateMessage();
-  loadModels();
+  modelLoadPromise = loadModels();
 })();

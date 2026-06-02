@@ -4,15 +4,14 @@
 This project intentionally ships as one large HTML file for restricted
 environments that cannot rely on localhost, a web server, remote URLs, CDNs, or
 file:// subresource loading. The editable source stays split under src/, while
-this script inlines the CSS, application JavaScript, vendored face-api UMD
-bundle (which itself ships TensorFlow.js v4 internally), and the
-gzip-compressed local model bundle into index.html.
+this script inlines the CSS, application JavaScript, vendored ONNX Runtime Web
+WASM bundle, and the gzip-compressed local runtime/model bundle into index.html.
 
-The model bundle (face detection, landmarks, and ArcFace recognition) is built
-from the unpacked manifests/shards in models/, packed into a single JSON map,
-gzip-compressed, base64-encoded, and decompressed in the browser via the
-WHATWG DecompressionStream API. This shrinks the embedded payload meaningfully
-versus base64-of-uncompressed.
+The model bundle (ONNX Runtime sidecar module/WASM, YuNet face detection, and
+OpenCV SFace recognition) is built from models/, packed into a single JSON map,
+gzip-compressed, base64-encoded, and decompressed in the browser via the WHATWG
+DecompressionStream API. This shrinks the embedded payload meaningfully versus
+base64-of-uncompressed.
 """
 
 from __future__ import annotations
@@ -34,16 +33,23 @@ STYLE = ROOT / "src" / "styles.css"
 CANVAS_PATCH = ROOT / "src" / "canvas-readback-patch.js"
 APP = ROOT / "src" / "app.js"
 LOCALES_DIR = ROOT / "src" / "locales"
-FACE_API = ROOT / "vendor" / "face-api.min.js"
+ORT = ROOT / "vendor" / "onnxruntime-web.wasm.min.js"
 MODEL_BUNDLE = ROOT / "models" / "embedded-models.js"
 DEFAULT_OUTPUT = ROOT / "index.html"
 
 REPLACEMENTS = {
     "{{FACETRACE_CSS}}": STYLE,
     "{{FACETRACE_CANVAS_PATCH_JS}}": CANVAS_PATCH,
-    "{{FACETRACE_FACE_API_JS}}": FACE_API,
+    "{{FACETRACE_ORT_JS}}": ORT,
     "{{FACETRACE_APP_JS}}": APP,
 }
+
+MODEL_ASSETS = (
+    ROOT / "models" / "onnxruntime" / "ort-wasm-simd-threaded.mjs",
+    ROOT / "models" / "onnxruntime" / "ort-wasm-simd-threaded.wasm",
+    ROOT / "models" / "yunet" / "face_detection_yunet_2026may.onnx",
+    ROOT / "models" / "opencv_sface" / "face_recognition_sface_2021dec_int8.onnx",
+)
 
 
 def read_text(path: Path) -> str:
@@ -66,72 +72,17 @@ def inline_script(text: str) -> str:
     return safe.rstrip() + "\n"
 
 
-def collect_face_api_assets(entries: dict[str, dict[str, str]]) -> None:
-    """Embed face-api.js detector and landmark assets keyed by filename."""
-    models_dir = ROOT / "models"
-    manifests = sorted(models_dir.glob("*-weights_manifest.json"))
-    if not manifests:
-        raise SystemExit("No face-api weight manifests found in models/")
-
-    for manifest_path in manifests:
-        manifest_text = read_text(manifest_path)
-        entries[manifest_path.name] = {"kind": "json", "text": manifest_text}
-
-        try:
-            manifest = json.loads(manifest_text)
-        except json.JSONDecodeError as exc:
-            raise SystemExit(
-                f"Invalid model manifest JSON: {manifest_path.relative_to(ROOT)}"
-            ) from exc
-
-        for group in manifest:
-            for shard_name in group.get("paths", []):
-                shard_path = manifest_path.parent / shard_name
-                if not shard_path.exists():
-                    raise SystemExit(
-                        f"Missing model shard: {shard_path.relative_to(ROOT)}"
-                    )
-                entries[shard_path.name] = {
-                    "kind": "binary",
-                    "base64": base64.b64encode(shard_path.read_bytes()).decode("ascii"),
-                }
-
-
-def collect_arcface_assets(entries: dict[str, dict[str, str]]) -> None:
-    """Embed the converted ArcFace TF.js GraphModel: model.json + shards."""
-    arcface_dir = ROOT / "models" / "arcface"
-    model_json_path = arcface_dir / "model.json"
-    if not model_json_path.exists():
-        raise SystemExit(
-            "Missing ArcFace model.json. Run conversion (see tools/README) "
-            "and place model.json + shards under models/arcface/."
-        )
-
-    model_json_text = read_text(model_json_path)
-    entries[model_json_path.name] = {"kind": "json", "text": model_json_text}
-
-    try:
-        spec = json.loads(model_json_text)
-    except json.JSONDecodeError as exc:
-        raise SystemExit("Invalid ArcFace model.json") from exc
-
-    for group in spec.get("weightsManifest", []):
-        for shard_name in group.get("paths", []):
-            shard_path = arcface_dir / shard_name
-            if not shard_path.exists():
-                raise SystemExit(
-                    f"Missing ArcFace shard: {shard_path.relative_to(ROOT)}"
-                )
-            # Filename collision guard: face-api shards already in entries
-            # share a flat namespace with the ArcFace shards.
-            if shard_path.name in entries:
-                raise SystemExit(
-                    f"Filename collision in embedded bundle: {shard_path.name}"
-                )
-            entries[shard_path.name] = {
-                "kind": "binary",
-                "base64": base64.b64encode(shard_path.read_bytes()).decode("ascii"),
-            }
+def collect_runtime_model_assets(entries: dict[str, dict[str, str]]) -> None:
+    """Embed ONNX Runtime Web sidecar/WASM plus YuNet and SFace ONNX assets."""
+    for asset_path in MODEL_ASSETS:
+        if not asset_path.exists():
+            raise SystemExit(f"Missing model/runtime asset: {asset_path.relative_to(ROOT)}")
+        if asset_path.name in entries:
+            raise SystemExit(f"Filename collision in embedded bundle: {asset_path.name}")
+        entries[asset_path.name] = {
+            "kind": "binary",
+            "base64": base64.b64encode(asset_path.read_bytes()).decode("ascii"),
+        }
 
 
 def load_locale_maps() -> dict[str, dict[str, str]]:
@@ -174,8 +125,7 @@ def build_locales_script(locales: dict[str, dict[str, str]]) -> str:
 
 def build_model_bundle() -> str:
     entries: dict[str, dict[str, str]] = {}
-    collect_face_api_assets(entries)
-    collect_arcface_assets(entries)
+    collect_runtime_model_assets(entries)
 
     payload = json.dumps(entries, separators=(",", ":")).encode("utf-8")
     # mtime=0 keeps most of the gzip header deterministic. Some Python/zlib
@@ -221,8 +171,8 @@ def build_html(model_bundle: str, locales_script: str) -> str:
 
     generated_note = (
         "<!--\n"
-        "  Generated by tools/build.py. Edit src/*, vendor/face-api.min.js,\n"
-        "  or the unpacked model assets in models/, then rebuild. index.html\n"
+        "  Generated by tools/build.py. Edit src/*, vendor/onnxruntime-web.wasm.min.js,\n"
+        "  or the local runtime/model assets in models/, then rebuild. index.html\n"
         "  is intentionally self-contained for offline file:// execution on\n"
         "  restricted systems. models/embedded-models.js is generated too.\n"
         "-->\n"

@@ -1,6 +1,11 @@
-MIT License
+ONNX Runtime Web
 
-Copyright (c) 2020 leondgarse
+Package: onnxruntime-web 1.26.0
+Source: https://www.npmjs.com/package/onnxruntime-web
+Repository: https://github.com/microsoft/onnxruntime
+License: MIT
+
+Copyright (c) Microsoft Corporation. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
