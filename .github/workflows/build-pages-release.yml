@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy_pages:
-        description: "Deploy GitHub Pages. Requires Settings > Pages > Source: GitHub Actions."
+        description: "Deploy GitHub Pages from this ref. Pushes to main deploy automatically."
         required: false
         default: false
         type: boolean
@@ -27,7 +27,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -73,7 +73,9 @@ jobs:
 
   pages:
     name: Deploy GitHub Pages
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy_pages == true
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_pages == true)
     needs: build
     runs-on: ubuntu-latest
     permissions:
